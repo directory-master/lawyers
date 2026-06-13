@@ -4,10 +4,10 @@
 // tracking, the entity filter, "show more" pagination, "near me" → your city,
 // the near-you banner, and the search box. Content is already in the HTML.
 
-import { isSaved, toggleSave, markVisited, counts } from './lib/saved.js?v=0.23.2';
-import { CITY_CENTROIDS } from './data/city-centroids.js?v=0.23.2';
-import { puffFrom } from './lib/confetti.js?v=0.23.2';
-import { track, listingOf, grantConsent } from './lib/analytics.js?v=0.23.2';
+import { isSaved, toggleSave, markVisited, counts } from './lib/saved.js?v=0.24.0';
+import { CITY_CENTROIDS } from './data/city-centroids.js?v=0.24.0';
+import { puffFrom } from './lib/confetti.js?v=0.24.0';
+import { track, listingOf, grantConsent } from './lib/analytics.js?v=0.24.0';
 
 const PIN = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>';
 

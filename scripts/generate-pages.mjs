@@ -133,6 +133,16 @@ function nearbyCities(slug, n = 6) {
     .map(c => ({ c, d: distanceMi(me, CITY_CENT.get(c.slug)) }))
     .sort((x, y) => x.d - y.d).slice(0, n).map(x => x.c);
 }
+// Nearest city with real depth (>= min listings). Thin cities point human
+// visitors here so they land on a page with choice; the thin page itself stays
+// live and indexable so Google searchers can still reach it.
+function nearestBiggerCity(slug, min = 5) {
+  const me = CITY_CENT.get(slug); if (!me) return null;
+  const opts = CITIES.filter(c => c.slug !== slug && c.count >= min && CITY_CENT.get(c.slug))
+    .map(c => ({ c, d: distanceMi(me, CITY_CENT.get(c.slug)) }))
+    .sort((x, y) => x.d - y.d);
+  return opts.length ? opts[0].c : null;
+}
 
 // Per-practice-area facts → unique, genuinely useful FAQ content (Georgia-specific).
 const FACTS = {
@@ -393,7 +403,7 @@ const itemListLd = (listings, pageUrl) => ({
 const crumbLd = (crumbs) => ({ '@type': 'BreadcrumbList', itemListElement: crumbs.map((c, i) => ({ '@type': 'ListItem', position: i + 1, name: c.name, item: ORIGIN + c.href })) });
 
 // ─── listing page ──────────────────────────────────────────────────────────────
-function listingPage({ urlPath, title, desc, h1, sub, eyebrow, intro, breadcrumbs, listings, sections = [], faq = [], index = true, priority = 0.5, geo = null }) {
+function listingPage({ urlPath, title, desc, h1, sub, eyebrow, intro, breadcrumbs, listings, sections = [], faq = [], index = true, priority = 0.5, geo = null, notice = '' }) {
   const canonical = ORIGIN + '/' + urlPath.replace(/\/?$/, '/');
   const ranked = top(listings, 10);            // top 10 still feeds the ItemList structured data
   const all = [...listings].sort(byRank);      // one ranked list for the page (no "Top 10" split)
@@ -408,6 +418,7 @@ function listingPage({ urlPath, title, desc, h1, sub, eyebrow, intro, breadcrumb
   <div class="stat"><div class="stat-num">${nf(g.firm.length)}</div><div class="stat-label">Firms</div></div>
   <div class="stat"><div class="stat-num">${nf(g.attorney.length)}</div><div class="stat-label">Attorneys</div></div>
 </div>
+${notice}
 ${promoSlots()}
 ${listings.length > 1 ? segmentedHTML(listings) : ''}
 <div class="section-head"><h2 class="section-title">${esc(h1)}</h2></div>
@@ -427,6 +438,12 @@ for (const c of CITIES) {
   const zipsHere = [...new Set(c.listings.map(l => l.zip).filter(Boolean))];
   const areas = AREAS.map(a => ({ a, list: c.listings.filter(l => l.typeSlug === a.slug) })).filter(x => x.list.length);
   const near = nearbyCities(c.slug, 6);
+  // Thin city (under 5 listings): push human visitors to the nearest city with
+  // real depth. Page stays indexed so Google searchers still land here.
+  const bigger = c.count < 5 ? nearestBiggerCity(c.slug, 5) : null;
+  const notice = bigger
+    ? `<a class="combine-banner" href="/${bigger.slug}/"><span class="combine-pin">${svg('navigation', 16)}</span><span class="combine-text"><b>${esc(c.name)}</b> has ${nf(c.count)} listed ${c.count === 1 ? 'lawyer' : 'lawyers'}. See ${nf(bigger.count)} more in ${esc(bigger.name)}, GA nearby.</span><span class="combine-go">→</span></a>`
+    : '';
   const v = pick(c.slug, [
     `Looking for a lawyer in ${c.name}, Georgia? Compare ${nf(c.count)} local law firms and attorneys${c.county ? ` in ${c.county} County` : ''}, ranked by rating and review volume.`,
     `${c.name}, GA is served by ${nf(c.count)} law practices in our directory, ${g.firm.length} firms and ${g.attorney.length} solo attorneys. Browse them by practice area, rating, or distance.`,
@@ -452,7 +469,7 @@ for (const c of CITIES) {
     h1: `Lawyers in ${c.name}, GA`, sub: c.county ? `${c.county} County · ${nf(c.count)} listings` : `${nf(c.count)} listings`,
     eyebrow: c.county ? `${c.county} County, Georgia` : 'Georgia',
     intro, breadcrumbs: [{ name: 'Home', href: '/' }, { name: 'Cities', href: '/directory/' }, { name: c.name, href: `/${c.slug}/` }],
-    listings: c.listings, sections, faq, index: c.count >= MIN_INDEX, priority: 0.8, geo: { placename: `${c.name}, GA`, ...(CITY_CENT.get(c.slug) || {}) },
+    listings: c.listings, sections, faq, index: c.count >= MIN_INDEX, priority: 0.8, geo: { placename: `${c.name}, GA`, ...(CITY_CENT.get(c.slug) || {}) }, notice,
   });
   for (const { a, list } of areas) {
     const at = top(list, 1)[0], short = stripArea(a.name);

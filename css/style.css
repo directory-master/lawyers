@@ -474,6 +474,16 @@ body.static { padding-bottom: var(--tabbar-h); }
 .near-banner--prompt { justify-content: flex-start; }
 .static-wrap .near-banner { margin: 2px 0 16px; }   /* remembered city, top of listing pages */
 
+/* Thin city → nearest city with depth (keeps thin page live for Google) */
+.combine-banner { display: flex; align-items: center; gap: 10px; margin: 4px 0 16px;
+  padding: 13px 15px; border-radius: var(--radius); background: var(--ink); color: #fff;
+  border: 1px solid var(--gilt); font-size: 14px; line-height: 1.45; }
+.combine-pin { color: var(--gilt-soft); display: inline-flex; flex: 0 0 auto; }
+.combine-text { flex: 1; min-width: 0; }
+.combine-text b { color: #fff; font-weight: 700; }
+.combine-go { margin-left: auto; color: var(--gilt-soft); font-weight: 800; flex: 0 0 auto; }
+.combine-banner:active { transform: scale(.99); }
+
 /* ── Legal-issue finder ─────────────────────────────────────────────────── */
 .issue-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 @media (max-width: 460px) { .issue-grid { grid-template-columns: 1fr; } }
