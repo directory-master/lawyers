@@ -27,7 +27,7 @@ import { CATEGORIES, TYPE_BY_SLUG, SLUG_BY_TYPE } from '../js/data/categories.js
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SITE = 'Georgia Lawyer Directory';
-const ORIGIN = 'https://ga.lawyers.artivicolab.com';
+const ORIGIN = 'https://lawyers.artivicolab.com';
 const YEAR = new Date().getFullYear();
 const V = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version;
 const MIN_INDEX = 3;
@@ -367,7 +367,7 @@ function postalAddress(l) {
 const itemListLd = (listings, pageUrl) => ({
   '@type': 'ItemList', itemListElement: listings.slice(0, 10).map((l, i) => ({
     '@type': 'ListItem', position: i + 1,
-    item: { '@type': 'LegalService', name: l.name, telephone: l.phone || undefined, url: l.website || pageUrl, address: postalAddress(l), geo: l.lat != null ? { '@type': 'GeoCoordinates', latitude: l.lat, longitude: l.lng } : undefined, aggregateRating: l.rating ? { '@type': 'AggregateRating', ratingValue: l.rating, reviewCount: l.reviews || 1 } : undefined },
+    item: { '@type': 'LegalService', name: l.name, telephone: l.phone || undefined, url: l.website || undefined, address: postalAddress(l), geo: l.lat != null ? { '@type': 'GeoCoordinates', latitude: l.lat, longitude: l.lng } : undefined, aggregateRating: l.rating ? { '@type': 'AggregateRating', ratingValue: l.rating, reviewCount: l.reviews || 1 } : undefined },
   })),
 });
 const crumbLd = (crumbs) => ({ '@type': 'BreadcrumbList', itemListElement: crumbs.map((c, i) => ({ '@type': 'ListItem', position: i + 1, name: c.name, item: ORIGIN + c.href })) });
@@ -416,7 +416,7 @@ for (const c of CITIES) {
   const intro = v + ' ' + data;
   const faq = [
     { q: `How many lawyers are in ${c.name}, GA?`, a: `Our directory lists ${nf(c.count)} lawyers and law firms in ${c.name}, Georgia, ${g.firm.length} law firms and ${g.attorney.length} solo attorneys${c.county ? `, all in ${c.county} County` : ''}.` },
-    tp && tp.rating ? { q: `Who is a top-rated lawyer in ${c.name}?`, a: `${tp.name} is one of the highest-rated ${tp.type.toLowerCase()}s in ${c.name}, with ${tp.rating.toFixed(1)} stars across ${tp.reviews || 'multiple'} reviews.` } : null,
+    tp && tp.rating ? { q: `Who is a top rated lawyer in ${c.name}?`, a: `${tp.name} is one of the highest rated ${tp.type.toLowerCase()}s in ${c.name}, with ${tp.rating.toFixed(1)} stars across ${tp.reviews || 'multiple'} reviews.` } : null,
     { q: `What types of lawyers practice in ${c.name}?`, a: `${c.name} has ${areas.map(x => `${x.list.length} ${stripArea(x.a.name).toLowerCase()} ${x.list.length === 1 ? 'lawyer' : 'lawyers'}`).slice(0, 6).join(', ')}.` },
     { q: `Do ${c.name} lawyers offer free consultations?`, a: `Many do. Use the Call or Website button on any listing to ask about a free consultation, fees, and availability before you hire.` },
   ].filter(Boolean);
@@ -444,7 +444,7 @@ for (const c of CITIES) {
     const aIntro = (av + ' ' + (FACTS[a.slug] || '')).trim();
     const aFaq = [
       { q: `How much does ${a_an(short)} ${short.toLowerCase()} lawyer cost in ${c.name}?`, a: `Fees vary by case and firm. ${FACTS[a.slug] || ''} Ask each ${c.name} listing about fees and free consultations using the Call or Website button.` },
-      at && at.rating ? { q: `Who is a top ${short.toLowerCase()} lawyer in ${c.name}?`, a: `${at.name} is among the highest-rated ${short.toLowerCase()} practices serving ${c.name}, with ${at.rating.toFixed(1)} stars${at.reviews ? ` across ${at.reviews} reviews` : ''}.` } : null,
+      at && at.rating ? { q: `Who is a top ${short.toLowerCase()} lawyer in ${c.name}?`, a: `${at.name} is among the highest rated ${short.toLowerCase()} practices serving ${c.name}, with ${at.rating.toFixed(1)} stars${at.reviews ? ` across ${at.reviews} reviews` : ''}.` } : null,
       { q: `How do I choose ${a_an(short)} ${short.toLowerCase()} lawyer in ${c.name}?`, a: `Compare ratings and reviews, confirm the lawyer handles ${a.group.toLowerCase()} matters, and ask about experience and fees in a first consultation. This page lists ${nf(list.length)} option${list.length === 1 ? '' : 's'} in ${c.name}.` },
     ].filter(Boolean);
     listingPage({
@@ -469,7 +469,7 @@ for (const c of COUNTIES) {
   const faq = [
     { q: `How many lawyers are in ${c.name} County, GA?`, a: `${nf(c.count)} lawyers and law firms across ${nf(cities.length)} ${cities.length === 1 ? 'city' : 'cities'} in ${c.name} County are listed here, ${g.firm.length} firms and ${g.attorney.length} solo attorneys.` },
     { q: `Which cities in ${c.name} County have lawyers listed?`, a: `${cities.slice(0, 8).map(ci => `${ci.name} (${ci.count})`).join(', ')}${cities.length > 8 ? ', and more' : ''}.` },
-    tp && tp.rating ? { q: `Who is a top-rated lawyer in ${c.name} County?`, a: `${tp.name} in ${tp.cityName} is among the highest rated, with ${tp.rating.toFixed(1)} stars${tp.reviews ? ` across ${tp.reviews} reviews` : ''}.` } : null,
+    tp && tp.rating ? { q: `Who is a top rated lawyer in ${c.name} County?`, a: `${tp.name} in ${tp.cityName} is among the highest rated, with ${tp.rating.toFixed(1)} stars${tp.reviews ? ` across ${tp.reviews} reviews` : ''}.` } : null,
   ].filter(Boolean);
   listingPage({
     urlPath: `county/${c.slug}`,

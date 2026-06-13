@@ -7,7 +7,7 @@ Guidance for working in this repo.
 **GA.Lawyers** — a zero-backend, **SEO-first static directory** of **lawyers and
 law firms across Georgia**, with a **native-iOS look and feel** and a **reusable
 vanilla-JS component architecture**. Deploys to **GitHub Pages**
-(target domain: `https://ga.lawyers.artivicolab.com`). Made by **Artivicolab**.
+(target domain: `https://lawyers.artivicolab.com`). Made by **Artivicolab**.
 
 The product is **the card** — a tappable iOS-style listing. Each card links out to
 the firm's own site / Google Maps / phone. Free listings make the directory rank;

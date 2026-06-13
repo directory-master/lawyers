@@ -831,3 +831,33 @@ a:focus-visible, button:focus-visible, [role="button"]:focus-visible, input:focu
 .install-btn--hero { position: absolute; top: calc(env(safe-area-inset-top) + 16px); right: 16px; z-index: 3;
   background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.34); color: #fff; }
 .install-btn--hero .icon { color: var(--gilt-soft); }
+
+/* ── Wide screens ─────────────────────────────────────────────────────────
+   The base design is a single 760px mobile column. On laptops and desktops
+   that leaves a narrow strip floating in empty space, so widen the shared
+   container and flow the listing lists into a multi column grid. The card,
+   hero, and nav all read --maxw, so one override re widths the whole page. */
+@media (min-width: 1024px) {
+  :root { --maxw: 1120px; }
+  /* listings spread across the width instead of one tall column */
+  .card-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px; align-items: start; }
+  .featured-grid { grid-template-columns: repeat(4, 1fr); }
+  /* drop the photo on wide screens, keep the ink + gold wash so the hero
+     reads as a clean letterhead band instead of a stretched stock image */
+  .hero { background-image:
+    linear-gradient(180deg, rgba(20,20,24,.94) 0%, rgba(20,20,24,.9) 100%),
+    radial-gradient(120% 90% at 82% -10%, rgba(168,137,60,.22), transparent 55%); }
+  /* keep prose at a comfortable reading measure even in a wide container */
+  .area-intro { max-width: 72ch; }
+  /* the claim sheet is a focused modal, not page width */
+  .sheet { max-width: 560px; }
+  /* cluster the fixed tab bar under the content column, not edge to edge */
+  .tabbar { padding-inline: max(0px, calc((100% - var(--maxw)) / 2)); }
+  /* footer: the 4 link groups go one per column instead of 2 sparse ones */
+  .foot-cols { grid-template-columns: repeat(4, 1fr); gap: 28px; }
+}
+@media (min-width: 1500px) {
+  :root { --maxw: 1280px; }
+  .card-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

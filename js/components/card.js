@@ -7,11 +7,11 @@
 //   Standard  → + photo, hours, "Verified" eligibility.
 //   Premium   → + pinned to top, "Request a consultation" CTA, social links.
 
-import { h } from '../lib/dom.js?v=0.18.3';
-import { icon } from '../lib/icons.js?v=0.18.3';
-import { isSaved, toggleSave, markVisited } from '../lib/saved.js?v=0.18.3';
-import { puffFrom } from '../lib/confetti.js?v=0.18.3';
-import { initials, telHref, prettyHost, mapsHref, stars, fmtRating, fmtDistance, fmtReviews, parseHours } from '../lib/format.js?v=0.18.3';
+import { h } from '../lib/dom.js?v=0.20.2';
+import { icon } from '../lib/icons.js?v=0.20.2';
+import { isSaved, toggleSave, markVisited } from '../lib/saved.js?v=0.20.2';
+import { puffFrom } from '../lib/confetti.js?v=0.20.2';
+import { initials, telHref, prettyHost, mapsHref, stars, fmtRating, fmtDistance, fmtReviews, parseHours } from '../lib/format.js?v=0.20.2';
 
 const CLAIM_TO = 'artivicolab@gmail.com'; // never rendered as visible text
 
