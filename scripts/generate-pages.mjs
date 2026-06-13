@@ -36,6 +36,20 @@ const OG_IMAGE = `${ORIGIN}/background-lawyer.jpg`;
 const HEAD_SOCIAL = `<meta property="og:image" content="${OG_IMAGE}"><meta property="og:image:width" content="591"><meta property="og:image:height" content="887"><meta name="twitter:image" content="${OG_IMAGE}">`;
 const PRECONNECT = `<link rel="preconnect" href="https://www.bing.com" crossorigin><link rel="dns-prefetch" href="https://www.bing.com">`;
 const SKIP = `<a class="skip-link" href="#main">Skip to content</a>`;
+// Google Analytics 4 (gtag.js) with Consent Mode v2. Defaults analytics to
+// "denied" so no GA cookies are set until the visitor accepts the cookie banner
+// (static.js writes gal.consent + calls gtag consent update). Goes in every head.
+const GA_ID = 'G-6PZ4N6YMGJ';
+const GTAG = `<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=${GA_ID}"></script>
+<script>
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('consent', 'default', { ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied', analytics_storage: 'denied', wait_for_update: 500 });
+try { if (localStorage.getItem('gal.consent') === 'granted') gtag('consent', 'update', { analytics_storage: 'granted' }); } catch (e) {}
+gtag('config', '${GA_ID}');
+</script>`;
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 const kebab = (s) => (s || '').toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -322,6 +336,7 @@ function pageShell({ title, desc, canonical, h1, sub, eyebrow, intro, breadcrumb
 <html lang="en">
 <head>
 <meta charset="utf-8">
+${GTAG}
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${esc(title)}</title>
 <meta name="description" content="${attr(desc)}">
@@ -589,12 +604,14 @@ function homeFaqHTML() {
   const gaTop = top(LAWYERS, 10);
   const homeBody = `<div class="hero">
 <button class="install-btn install-btn--hero" data-install>${svg('download', 16)}<span>Install</span></button>
+<div class="hero-inner">
 <p class="hero-eyebrow">Georgia, statewide</p>
 <h1 class="hero-title">Find the right lawyer, near you.</h1>
 <p class="hero-sub">Browse ${nf(LAWYERS.length)} law firms and attorneys across Georgia by city, county, ZIP, or practice area.</p>
 <button class="btn btn--primary btn--lg btn--hero" data-near>${svg('crosshair', 20)}<span>Find lawyers near me</span></button>
 <form class="search" data-search><span class="search-ic">${svg('search', 18)}</span><input class="search-input" type="search" placeholder="Search firm, attorney, city or area…" enterkeyhint="search"></form>
 ${trustBandHTML()}
+</div>
 </div>
 <div data-near-banner></div>
 ${qaBarHTML(false)}
@@ -621,6 +638,7 @@ ${lawyerCtaHTML()}
 <html lang="en">
 <head>
 <meta charset="utf-8">
+${GTAG}
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5">
 <title>${SITE} | Top Lawyers and Law Firms in Georgia (${YEAR})</title>
 <meta name="description" content="Find and compare ${nf(LAWYERS.length)} lawyers and law firms across Georgia. Browse by city, county, ZIP, or practice area with ratings, reviews, and direct contact.">
@@ -669,7 +687,8 @@ ${footerHTML()}${tabBarHTML(mode === 'near' ? 'near' : 'browse')}
 <script type="module" src="/js/collections.js?v=${V}"></script>`;
   const html = `<!doctype html>
 <html lang="en"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta charset="utf-8">${GTAG}
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${esc(title)}</title><meta name="description" content="${attr(desc)}">
 <meta name="robots" content="${index ? 'index, follow' : 'noindex, follow'}">
 <link rel="canonical" href="${canonical}"><meta name="theme-color" content="#1a1a1f">
@@ -726,7 +745,7 @@ infoPage({
 <p>This Privacy Policy explains how ${SITE} handles information. We are an independent directory, not a law firm or lawyer referral service.</p>
 <h2>Information we show</h2><p>Listings are aggregated from public sources and include business name, address, phone, website, ratings, and reviews. We do not sell personal data.</p>
 <h2>Information stored on your device</h2><p>Saved listings, recently viewed listings, and your detected city are stored only in your browser using local storage. They are not uploaded to us.</p>
-<h2>Analytics and cookies</h2><p>We use minimal, privacy respecting analytics to understand which pages are useful. We do not run advertising trackers.</p>
+<h2>Analytics and cookies</h2><p>We use Google Analytics to understand which pages help people find a lawyer. When you first visit, a cookie banner lets you accept or decline analytics cookies. Until you accept, analytics runs without cookies and does not identify you. If you accept, Google Analytics sets cookies to measure visits. We do not run advertising trackers and we do not sell personal data. You can change your choice by clearing this site's data in your browser.</p>
 <h2>Contact</h2><p>Questions about privacy? <a href="${mailtoC('Privacy')}">Contact us</a>.</p>
 </div>`,
 });
@@ -743,7 +762,7 @@ infoPage({
 });
 
 // ── 404 ────────────────────────────────────────────────────────────────────────
-writeFileSync(join(ROOT, '404.html'), `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Page not found | ${SITE}</title><meta name="robots" content="noindex"><link rel="stylesheet" href="/css/style.css?v=${V}"></head><body class="static">${headerHTML()}<main class="view static-wrap"><h1 class="static-h1">Page not found</h1><p class="static-sub">That page doesn’t exist. Browse the directory instead.</p><p><a class="btn btn--primary" href="/directory/">Browse all Georgia lawyers</a></p></main>${footerHTML()}</body></html>`);
+writeFileSync(join(ROOT, '404.html'), `<!doctype html><html lang="en"><head><meta charset="utf-8">${GTAG}<meta name="viewport" content="width=device-width, initial-scale=1"><title>Page not found | ${SITE}</title><meta name="robots" content="noindex"><link rel="stylesheet" href="/css/style.css?v=${V}"></head><body class="static">${headerHTML()}<main class="view static-wrap"><h1 class="static-h1">Page not found</h1><p class="static-sub">That page doesn’t exist. Browse the directory instead.</p><p><a class="btn btn--primary" href="/directory/">Browse all Georgia lawyers</a></p></main>${footerHTML()}</body></html>`);
 
 // ── sitemap + robots ───────────────────────────────────────────────────────────
 sitemap.unshift({ loc: ORIGIN + '/', priority: 1.0 });

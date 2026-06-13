@@ -759,6 +759,34 @@ a[href], button, [role="button"], label[for], select, summary,
   .docket-btn--call .icon { animation: none; }
 }
 
+/* ── Docket on wide screens: editorial two column leaderboard ─────────────
+   On phones the docket is one tall column. Once the page container widens
+   (>=1024px, --maxw jumps to 1120), that single column stretches the No.1
+   spotlight into a giant band. Instead, lay it out like a magazine ranking:
+   the champion becomes a tall cover panel on the left, ranks II to X stack
+   in a column on the right. */
+@media (min-width: 1024px) {
+  .docket { display: grid; align-items: start; column-gap: 30px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.04fr);
+    grid-template-areas: "head head" "champ rows";
+    padding: 30px 30px 26px; }
+  .docket-head { grid-area: head; margin-bottom: 22px; }
+  .docket-title { font-size: 27px; }
+  .docket-corner--br { bottom: 14px; right: 14px; }
+  .docket-corner--tl { top: 14px; left: 14px; }
+  /* champion: a tall cover that stretches to match the rows column height,
+     content anchored low over the photo */
+  .docket-champ { grid-area: champ; margin-bottom: 0; align-self: stretch;
+    display: flex; flex-direction: column; justify-content: center; min-height: 340px; }
+  .docket-champ:has(.docket-champ-bg) { min-height: 340px; }
+  .docket-champ:has(.docket-champ-bg) .docket-champ-name { font-size: 32px; }
+  .docket-rows { grid-area: rows; align-self: start; }
+  /* the first ranked row already carries a divider rule; on wide screens the
+     rows read as a tidy list beside the cover, give each a touch more room */
+  .docket-row { padding-block: 13px; }
+  .docket-row-name { font-size: 16px; }
+}
+
 /* ── Accessibility: skip link + visible focus ───────────────────────────── */
 .skip-link { position: fixed; top: -60px; left: 12px; z-index: 200; background: var(--ink); color: #fff;
   padding: 10px 16px; border-radius: 8px; font-weight: 700; font-size: 14px; transition: top .15s; }
@@ -832,6 +860,23 @@ a:focus-visible, button:focus-visible, [role="button"]:focus-visible, input:focu
   background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.34); color: #fff; }
 .install-btn--hero .icon { color: var(--gilt-soft); }
 
+/* ── Cookie consent banner (GA4 Consent Mode) ────────────────────────────── */
+.consent { position: fixed; left: 12px; right: 12px; bottom: calc(var(--tabbar-h) + 12px);
+  z-index: 130; max-width: 520px; margin-inline: auto; padding: 16px 18px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px;
+  background: var(--ink); color: rgba(255,255,255,.82); border: 1px solid var(--gilt);
+  border-radius: 14px; box-shadow: 0 16px 40px -12px rgba(0,0,0,.6);
+  opacity: 0; transform: translateY(12px); transition: opacity .3s, transform .3s; }
+.consent.show { opacity: 1; transform: translateY(0); }
+.consent-text { flex: 1 1 240px; margin: 0; font-size: 13px; line-height: 1.5; }
+.consent-text a { color: var(--gilt-soft); font-weight: 600; }
+.consent-btns { display: flex; gap: 9px; flex: 0 0 auto; margin-left: auto; }
+.consent-btn { padding: 9px 16px; border-radius: 999px; font-size: 13px; font-weight: 700;
+  border: 1px solid transparent; }
+.consent-btn--gold { background: var(--gilt); color: var(--ink); }
+.consent-btn--ghost { background: transparent; color: #fff; border-color: rgba(255,255,255,.4); }
+.consent-btn:active { transform: scale(.95); }
+
 /* ── Wide screens ─────────────────────────────────────────────────────────
    The base design is a single 760px mobile column. On laptops and desktops
    that leaves a narrow strip floating in empty space, so widen the shared
@@ -848,6 +893,18 @@ a:focus-visible, button:focus-visible, [role="button"]:focus-visible, input:focu
   .hero { background-image:
     linear-gradient(180deg, rgba(20,20,24,.94) 0%, rgba(20,20,24,.9) 100%),
     radial-gradient(120% 90% at 82% -10%, rgba(168,137,60,.22), transparent 55%); }
+  /* let the dark band run the full width of the screen (the home hero lives
+     inside the capped .view, so break it out) and sit flush at the top */
+  .view--home { padding-top: 0; }
+  .hero { margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw); }
+  /* keep the original stacked order, but cap it to a centered column so the
+     controls no longer stretch the full band */
+  .hero { padding-block: 52px; }
+  .hero-inner { max-width: 640px; margin-inline: auto; text-align: center; }
+  .hero-eyebrow { justify-content: center; }
+  .hero-sub { margin-inline: auto; }
+  /* the bottom-left accent rule looks stray under centered content */
+  .hero::after { display: none; }
   /* keep prose at a comfortable reading measure even in a wide container */
   .area-intro { max-width: 72ch; }
   /* the claim sheet is a focused modal, not page width */
@@ -859,5 +916,5 @@ a:focus-visible, button:focus-visible, [role="button"]:focus-visible, input:focu
 }
 @media (min-width: 1500px) {
   :root { --maxw: 1280px; }
-  .card-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  /* keep listings at two cards per row at every width, never three */
 }

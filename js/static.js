@@ -4,9 +4,10 @@
 // tracking, the entity filter, "show more" pagination, "near me" → your city,
 // the near-you banner, and the search box. Content is already in the HTML.
 
-import { isSaved, toggleSave, markVisited, counts } from './lib/saved.js?v=0.20.2';
-import { CITY_CENTROIDS } from './data/city-centroids.js?v=0.20.2';
-import { puffFrom } from './lib/confetti.js?v=0.20.2';
+import { isSaved, toggleSave, markVisited, counts } from './lib/saved.js?v=0.22.0';
+import { CITY_CENTROIDS } from './data/city-centroids.js?v=0.22.0';
+import { puffFrom } from './lib/confetti.js?v=0.22.0';
+import { track, listingOf, grantConsent } from './lib/analytics.js?v=0.22.0';
 
 const PIN = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>';
 
@@ -35,6 +36,30 @@ document.addEventListener('click', (e) => {
   if (near) { e.preventDefault(); goNear(near); return; }
   const visit = e.target.closest('[data-visit]');           // Call / Directions / Website
   if (visit) { const art = visit.closest('[data-listing-id]'); if (art) markVisited(art.dataset.listingId); }
+});
+
+// ── analytics: a named GA4 event for every meaningful interaction ─────────────
+// Separate, observe-only listener (never preventDefault) so behavior above is
+// untouched. Page views are sent automatically by the gtag config in <head>.
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('a, button, [data-save-id]');
+  if (!t) return;
+  const listing_id = listingOf(t);
+  const href = t.getAttribute('href') || '';
+  if (t.matches('[data-save-id]'))       return track('save_toggle', { listing_id: t.dataset.saveId });
+  if (t.matches('[data-near]'))          return track('find_near_me');
+  if (t.matches('[data-install]'))       return track('install_click');
+  if (t.matches('.segment[data-filter]'))return track('filter', { filter: t.dataset.filter });
+  if (t.matches('.qa-tile'))             return track('quick_access', { dest: t.classList.contains('qa-tile--saved') ? 'saved' : 'visited' });
+  if (href.startsWith('tel:'))           return track('call_click', { listing_id });
+  if (href.includes('google.com/maps'))  return track('directions_click', { listing_id });
+  if (href.startsWith('mailto:')) {
+    const promo = t.closest('.promo, .price-card');
+    const tier = promo?.className.match(/promo--(\w+)|price-card--(\w+)/)?.[0];
+    return track('lead_click', { listing_id, tier, label: (t.textContent || '').trim().slice(0, 40) });
+  }
+  if (/^https?:/.test(href) && t.matches('.lc-btn, .docket-btn, [data-visit]'))
+    return track('website_click', { listing_id });
 });
 
 // ── Listing filter (All / Law Firms / Attorneys) + ranking + pagination ──────
@@ -153,6 +178,7 @@ if (banner) {
 document.querySelectorAll('form[data-search]').forEach(f => f.addEventListener('submit', (e) => {
   e.preventDefault();
   const q = (f.querySelector('input')?.value || '').trim();
+  if (q) track('search', { search_term: q });
   location.href = '/search/' + (q ? '?q=' + encodeURIComponent(q) : '');
 }));
 
@@ -274,3 +300,29 @@ if (docket) {
     if (row) promote(+row.dataset.docketI);
   });
 }
+
+// ── Cookie consent (GA4 Consent Mode v2) ─────────────────────────────────────
+// The <head> tag defaults analytics_storage to "denied" and reads a stored
+// "granted" choice on load. This banner lets the visitor accept (full GA cookies)
+// or decline (GA stays cookieless). The choice is remembered on this device.
+(() => {
+  const KEY = 'gal.consent';
+  let choice = null;
+  try { choice = localStorage.getItem(KEY); } catch { /* private mode */ }
+  if (choice === 'granted' || choice === 'denied') return;   // already decided
+
+  const save = (v) => { try { localStorage.setItem(KEY, v); } catch { /* */ } };
+  const bar = document.createElement('div');
+  bar.className = 'consent';
+  bar.setAttribute('role', 'dialog');
+  bar.setAttribute('aria-label', 'Cookie notice');
+  bar.innerHTML = `<p class="consent-text">We use cookies for analytics to see which pages help people find a lawyer. You can accept or decline. See our <a href="/privacy/">Privacy Policy</a>.</p>
+    <div class="consent-btns">
+      <button class="consent-btn consent-btn--ghost" data-consent="denied">Decline</button>
+      <button class="consent-btn consent-btn--gold" data-consent="granted">Accept</button>
+    </div>`;
+  const close = (v) => { save(v); if (v === 'granted') grantConsent(); track('consent_choice', { choice: v }); bar.classList.remove('show'); setTimeout(() => bar.remove(), 300); };
+  bar.addEventListener('click', (e) => { const b = e.target.closest('[data-consent]'); if (b) close(b.dataset.consent); });
+  document.body.appendChild(bar);
+  requestAnimationFrame(() => bar.classList.add('show'));
+})();
