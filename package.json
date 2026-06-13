@@ -1,6 +1,6 @@
 {
   "name": "ga-lawyers",
-  "version": "0.24.0",
+  "version": "0.24.2",
   "private": true,
   "description": "Georgia Lawyer Directory — zero-backend, SEO-first static directory of lawyers & law firms across Georgia.",
   "type": "module",
