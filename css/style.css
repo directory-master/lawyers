@@ -860,6 +860,11 @@ a:focus-visible, button:focus-visible, [role="button"]:focus-visible, input:focu
   background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.34); color: #fff; }
 .install-btn--hero .icon { color: var(--gilt-soft); }
 
+/* ── No-JavaScript notice (rendered only inside <noscript>) ───────────────── */
+.noscript-banner { position: relative; z-index: 140; padding: 14px 16px; text-align: center;
+  background: var(--ink); color: #fff; font-size: 14px; line-height: 1.5;
+  border-bottom: 2px solid var(--gilt); }
+
 /* ── Cookie consent banner (GA4 Consent Mode) ────────────────────────────── */
 .consent { position: fixed; left: 12px; right: 12px; bottom: calc(var(--tabbar-h) + 12px);
   z-index: 130; max-width: 520px; margin-inline: auto; padding: 16px 18px;

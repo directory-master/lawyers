@@ -36,6 +36,9 @@ const OG_IMAGE = `${ORIGIN}/background-lawyer.jpg`;
 const HEAD_SOCIAL = `<meta property="og:image" content="${OG_IMAGE}"><meta property="og:image:width" content="591"><meta property="og:image:height" content="887"><meta name="twitter:image" content="${OG_IMAGE}">`;
 const PRECONNECT = `<link rel="preconnect" href="https://www.bing.com" crossorigin><link rel="dns-prefetch" href="https://www.bing.com">`;
 const SKIP = `<a class="skip-link" href="#main">Skip to content</a>`;
+// Shown only when JavaScript is disabled. The site relies on JS for search,
+// saving, filtering, and near me, so we tell the visitor to turn it on.
+const NOSCRIPT = `<noscript><div class="noscript-banner">This site needs JavaScript. Please turn on JavaScript in your browser to search, save, and use ${SITE}.</div></noscript>`;
 // Google Analytics 4 (gtag.js) with Consent Mode v2. Defaults analytics to
 // "denied" so no GA cookies are set until the visitor accepts the cookie banner
 // (static.js writes gal.consent + calls gtag consent update). Goes in every head.
@@ -357,6 +360,7 @@ ${HEAD_PWA}
 </head>
 <body class="static">
 ${SKIP}
+${NOSCRIPT}
 <section class="page-hero"><button class="install-btn install-btn--hero" data-install>${svg('download', 16)}<span>Install</span></button><div class="page-hero-inner">
 <nav class="breadcrumb" aria-label="Breadcrumb">${crumbHTML}</nav>
 ${eyebrow ? `<p class="hero-eyebrow">${esc(eyebrow)}</p>` : ''}
@@ -662,6 +666,7 @@ ${HEAD_PWA}
 </head>
 <body>
 ${SKIP}
+${NOSCRIPT}
 <main class="view view--home" id="main">${homeBody}</main>
 ${footerHTML()}
 ${tabBarHTML('home')}
@@ -696,6 +701,7 @@ ${footerHTML()}${tabBarHTML(mode === 'near' ? 'near' : 'browse')}
 ${PRECONNECT}
 ${HEAD_PWA}<link rel="stylesheet" href="/css/style.css?v=${V}">
 </head><body class="static">${SKIP}
+${NOSCRIPT}
 ${body}
 </body></html>`;
   out(urlPath, html, { index });
@@ -762,7 +768,7 @@ infoPage({
 });
 
 // ── 404 ────────────────────────────────────────────────────────────────────────
-writeFileSync(join(ROOT, '404.html'), `<!doctype html><html lang="en"><head><meta charset="utf-8">${GTAG}<meta name="viewport" content="width=device-width, initial-scale=1"><title>Page not found | ${SITE}</title><meta name="robots" content="noindex"><link rel="stylesheet" href="/css/style.css?v=${V}"></head><body class="static">${headerHTML()}<main class="view static-wrap"><h1 class="static-h1">Page not found</h1><p class="static-sub">That page doesn’t exist. Browse the directory instead.</p><p><a class="btn btn--primary" href="/directory/">Browse all Georgia lawyers</a></p></main>${footerHTML()}</body></html>`);
+writeFileSync(join(ROOT, '404.html'), `<!doctype html><html lang="en"><head><meta charset="utf-8">${GTAG}<meta name="viewport" content="width=device-width, initial-scale=1"><title>Page not found | ${SITE}</title><meta name="robots" content="noindex"><link rel="stylesheet" href="/css/style.css?v=${V}"></head><body class="static">${NOSCRIPT}${headerHTML()}<main class="view static-wrap"><h1 class="static-h1">Page not found</h1><p class="static-sub">That page doesn’t exist. Browse the directory instead.</p><p><a class="btn btn--primary" href="/directory/">Browse all Georgia lawyers</a></p></main>${footerHTML()}</body></html>`);
 
 // ── sitemap + robots ───────────────────────────────────────────────────────────
 sitemap.unshift({ loc: ORIGIN + '/', priority: 1.0 });
