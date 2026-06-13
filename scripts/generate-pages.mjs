@@ -370,6 +370,7 @@ ${intro ? `<p class="hero-lede">${esc(intro)}</p>` : ''}
 </div></section>
 ${qaBarHTML()}
 <main class="view static-wrap" id="main">
+<div data-near-banner data-near-passive></div>
 ${body}
 </main>
 ${footerHTML()}

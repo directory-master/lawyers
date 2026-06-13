@@ -472,6 +472,7 @@ body.static { padding-bottom: var(--tabbar-h); }
 .near-pin { color: var(--gold-deep); display: inline-flex; }
 .near-go { margin-left: auto; color: var(--gold-deep); font-weight: 800; }
 .near-banner--prompt { justify-content: flex-start; }
+.static-wrap .near-banner { margin: 2px 0 16px; }   /* remembered city, top of listing pages */
 
 /* ── Legal-issue finder ─────────────────────────────────────────────────── */
 .issue-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }

@@ -4,10 +4,10 @@
 // tracking, the entity filter, "show more" pagination, "near me" → your city,
 // the near-you banner, and the search box. Content is already in the HTML.
 
-import { isSaved, toggleSave, markVisited, counts } from './lib/saved.js?v=0.22.3';
-import { CITY_CENTROIDS } from './data/city-centroids.js?v=0.22.3';
-import { puffFrom } from './lib/confetti.js?v=0.22.3';
-import { track, listingOf, grantConsent } from './lib/analytics.js?v=0.22.3';
+import { isSaved, toggleSave, markVisited, counts } from './lib/saved.js?v=0.23.0';
+import { CITY_CENTROIDS } from './data/city-centroids.js?v=0.23.0';
+import { puffFrom } from './lib/confetti.js?v=0.23.0';
+import { track, listingOf, grantConsent } from './lib/analytics.js?v=0.23.0';
 
 const PIN = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>';
 
@@ -164,11 +164,16 @@ if (banner) {
       if (s) { saveGeo(s, latitude, longitude); fill(s); } else ask();
     },
     () => ask(), GEO_OPTS);
+  // Passive banners (on the listing pages) only ever surface an ALREADY known
+  // city so the recognized location follows the visitor across pages; they never
+  // prompt or show the opt-in. The home banner keeps the full opt-in flow.
+  const passive = banner.hasAttribute('data-near-passive');
   // 1) show the remembered city instantly (persisted in localStorage);
   // 2) else if location already granted, detect silently;
   // 3) else show an opt-in button (no surprise prompt).
   const saved = loadGeo();
   if (saved && saved.slug && CITY_CENTROIDS[saved.slug]) fill(saved.slug);
+  else if (passive) banner.remove();          // nothing remembered → stay invisible
   else if (navigator.permissions && navigator.permissions.query) {
     navigator.permissions.query({ name: 'geolocation' }).then(st => st.state === 'granted' ? locate() : ask()).catch(ask);
   } else ask();
