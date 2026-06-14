@@ -4,12 +4,17 @@
 // tracking, the entity filter, "show more" pagination, "near me" → your city,
 // the near-you banner, and the search box. Content is already in the HTML.
 
-import { isSaved, toggleSave, markVisited, counts } from './lib/saved.js?v=0.24.7';
-import { CITY_CENTROIDS } from './data/city-centroids.js?v=0.24.7';
-import { puffFrom } from './lib/confetti.js?v=0.24.7';
-import { track, listingOf, grantConsent } from './lib/analytics.js?v=0.24.7';
+import { isSaved, toggleSave, markVisited, counts } from './lib/saved.js?v=0.25.0';
+import { CITY_CENTROIDS } from './data/city-centroids.js?v=0.25.0';
+import { puffFrom } from './lib/confetti.js?v=0.25.0';
+import { track, listingOf, grantConsent } from './lib/analytics.js?v=0.25.0';
 
 const PIN = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>';
+
+// Haptic feedback on save toggle: a confirming double tap when saving, a single
+// softer pulse when unsaving. No-op where the Vibration API is unsupported
+// (iOS Safari) or blocked, so it never throws.
+const haptic = (saved) => { try { navigator.vibrate?.(saved ? [12, 28, 22] : 18); } catch { /* unsupported */ } };
 
 // Remember the visitor's detected location + nearest city across visits.
 const GEO_KEY = 'gal.geo';
@@ -31,7 +36,7 @@ setCounts(); initSaves();
 // ── delegated clicks ──────────────────────────────────────────────────────────
 document.addEventListener('click', (e) => {
   const save = e.target.closest('[data-save-id]');
-  if (save) { e.preventDefault(); if (toggleSave(save.dataset.saveId)) puffFrom(save, e); return; }
+  if (save) { e.preventDefault(); const saved = toggleSave(save.dataset.saveId); haptic(saved); if (saved) puffFrom(save, e); return; }
   const near = e.target.closest('[data-near]');
   if (near) { e.preventDefault(); goNear(near); return; }
   const visit = e.target.closest('[data-visit]');           // Call / Directions / Website

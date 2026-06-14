@@ -7,20 +7,24 @@
 //   Standard  → + photo, hours, "Verified" eligibility.
 //   Premium   → + pinned to top, "Request a consultation" CTA, social links.
 
-import { h } from '../lib/dom.js?v=0.24.7';
-import { icon } from '../lib/icons.js?v=0.24.7';
-import { isSaved, toggleSave, markVisited } from '../lib/saved.js?v=0.24.7';
-import { puffFrom } from '../lib/confetti.js?v=0.24.7';
-import { initials, telHref, prettyHost, mapsHref, stars, fmtRating, fmtDistance, fmtReviews, parseHours } from '../lib/format.js?v=0.24.7';
+import { h } from '../lib/dom.js?v=0.25.0';
+import { icon } from '../lib/icons.js?v=0.25.0';
+import { isSaved, toggleSave, markVisited } from '../lib/saved.js?v=0.25.0';
+import { puffFrom } from '../lib/confetti.js?v=0.25.0';
+import { initials, telHref, prettyHost, mapsHref, stars, fmtRating, fmtDistance, fmtReviews, parseHours } from '../lib/format.js?v=0.25.0';
 
 const CLAIM_TO = 'artivicolab@gmail.com'; // never rendered as visible text
+
+// Haptic feedback on save toggle: confirming double tap when saving, single
+// softer pulse when unsaving. No-op where Vibration API is unsupported/blocked.
+const haptic = (saved) => { try { navigator.vibrate?.(saved ? [12, 28, 22] : 18); } catch { /* unsupported */ } };
 
 function saveButton(l) {
   return h('button', {
     class: 'lc-save' + (isSaved(l.id) ? ' is-saved' : ''),
     'data-save-id': l.id, 'aria-pressed': String(isSaved(l.id)),
     'aria-label': 'Save ' + l.name, title: 'Save',
-    onclick: (e) => { e.stopPropagation(); e.preventDefault(); if (toggleSave(l.id)) puffFrom(e.currentTarget, e); },
+    onclick: (e) => { e.stopPropagation(); e.preventDefault(); const saved = toggleSave(l.id); haptic(saved); if (saved) puffFrom(e.currentTarget, e); },
   }, icon('bookmark', { size: 18 }));
 }
 
