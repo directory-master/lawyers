@@ -3,9 +3,9 @@
 // Reuses the store selectors and the real card component, so cards stay fully
 // interactive (save, visited, directions).
 
-import * as S from './lib/store.js?v=0.24.5';
-import { renderCard } from './components/card.js?v=0.24.5';
-import { savedIds, visitedIds } from './lib/saved.js?v=0.24.5';
+import * as S from './lib/store.js?v=0.24.7';
+import { renderCard } from './components/card.js?v=0.24.7';
+import { savedIds, visitedIds } from './lib/saved.js?v=0.24.7';
 
 const root = document.getElementById('collection');
 const mode = root && root.dataset.mode;

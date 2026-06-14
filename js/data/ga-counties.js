@@ -141,6 +141,8 @@ export const CITY_COUNTY = {
   alamo: 'Wheeler',
   concord: 'Pike',
   wrens: 'Jefferson',
+  'fair-oaks': 'Cobb',
+  'robins-afb': 'Houston',
   'berkeley-lake': 'Gwinnett',
   franklin: 'Heard',
   irwinton: 'Wilkinson',
