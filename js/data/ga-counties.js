@@ -140,6 +140,7 @@ export const CITY_COUNTY = {
   'peachtree-corners': 'Gwinnett',
   alamo: 'Wheeler',
   concord: 'Pike',
+  wrens: 'Jefferson',
   'berkeley-lake': 'Gwinnett',
   franklin: 'Heard',
   irwinton: 'Wilkinson',
