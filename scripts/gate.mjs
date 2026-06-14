@@ -69,10 +69,17 @@ export function isLawyerRow(r) {
   return inferType(nm, cat) != null;
 }
 
+// Bing sometimes truncates long city names in the scraped address ("Peachtree
+// Corners" → "Peachtree Cor"). Normalize known truncations so they don't spawn a
+// junk duplicate city each re-scrape. Keyed by the lowercased truncated form.
+const CITY_FIXUPS = {
+  'peachtree cor': 'Peachtree Corners',
+};
 export const cityNameFromAddr = (addr) => {
   const parts = (addr || '').split(',').map(s => s.trim());
   const raw = parts.length >= 2 ? parts[parts.length - 2] : '';
-  return raw.replace(/^private address in\s*/i, '').replace(/^private address.*$/i, '').trim();
+  const clean = raw.replace(/^private address in\s*/i, '').replace(/^private address.*$/i, '').trim();
+  return CITY_FIXUPS[clean.toLowerCase()] || clean;
 };
 export const citySlugOf = (r) => kebab(cityNameFromAddr(r['Address'])) || '_unknown';
 export const rawKey = (r) => ((r['ID'] || '').trim()) || `${(r['Name'] || '').toLowerCase()}|${(r['Address'] || '').toLowerCase()}`;
