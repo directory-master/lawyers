@@ -143,6 +143,23 @@ function nearestBiggerCity(slug, min = 5) {
     .sort((x, y) => x.d - y.d);
   return opts.length ? opts[0].c : null;
 }
+// A city with fewer than NEARBY_MIN listings is topped up with the closest
+// cities' lawyers (closest city first, its highest ranked listings first) until
+// the page offers more than 10 in total. These fill listings are shown in their
+// own "More lawyers near <City>" block, never merged into the city's own ranked
+// list or its structured data, so each place's page stays an honest count.
+const NEARBY_MIN = 10;
+function nearbyFill(slug, have) {
+  if (have >= NEARBY_MIN) return [];
+  const out = [];
+  for (const c of nearbyCities(slug, 12)) {
+    for (const l of [...c.listings].sort(byRank)) {
+      out.push(l);
+      if (have + out.length > NEARBY_MIN) return out;   // more than 10 total
+    }
+  }
+  return out;
+}
 
 // Per-practice-area facts → unique, genuinely useful FAQ content (Georgia-specific).
 const FACTS = {
@@ -194,7 +211,8 @@ function cardHTML(l, rank, extraClass = '') {
     : `<div class="lc-thumb lc-thumb--initials" aria-hidden="true">${esc(initials(l.name))}</div>`;
   const ratingPill = l.rating ? `<span class="lc-rating"><span class="lc-star">★</span> ${l.rating.toFixed(1)}</span>` : `<span class="lc-rating lc-rating--new">New</span>`;
   const reviews = l.reviews ? `<span class="lc-reviews">${nf(l.reviews)} review${l.reviews === 1 ? '' : 's'}${srcFlipHTML(reviewSourceList(l))}</span>` : '';
-  return `<article class="lc${extraClass ? ' ' + extraClass : ''}" data-listing-id="${attr(l.id)}" data-entity="${l.entity}" data-rating="${l.rating || 0}" data-reviews="${l.reviews || 0}">
+  const coords = (l.lat != null && l.lng != null) ? ` data-lat="${l.lat}" data-lng="${l.lng}"` : '';
+  return `<article class="lc${extraClass ? ' ' + extraClass : ''}" data-listing-id="${attr(l.id)}" data-entity="${l.entity}" data-rating="${l.rating || 0}" data-reviews="${l.reviews || 0}"${coords}>
   <div class="lc-tabs">${rank != null ? `<span class="lc-tab lc-tab--rank">No. ${rank}</span>` : ''}<span class="lc-tab lc-tab--kind">${kind}</span></div>
   <div class="lc-card">
     <button class="lc-save" data-save-id="${attr(l.id)}" aria-pressed="false" aria-label="Save ${attr(l.name)}" title="Save">${svg('bookmark', 18)}</button>
@@ -205,6 +223,7 @@ function cardHTML(l, rank, extraClass = '') {
         <div class="lc-meta">${ratingPill}${reviews}</div>
         <div class="lc-addr">${svg('mapPin', 15)}<span>${esc(l.address || l.cityName + ', GA')}</span></div>
       </div>
+      <span class="lc-wm" data-dist aria-hidden="true"></span>
     </div>
     <div class="lc-actions">
       ${tel ? `<a class="lc-btn lc-btn--call" href="${attr(tel)}" data-visit>${svg('phone', 16)}<span>Call</span></a>` : ''}
@@ -243,7 +262,7 @@ function tabBarHTML(active) {
   const t = (id, ic, label, href, btn) => { const on = active === id; return btn
     ? `<button class="tab${on ? ' is-active' : ''}" data-near aria-label="${label}"><span class="tab-ic">${svg(ic, 24)}</span><span class="tab-label">${label}</span></button>`
     : `<a class="tab${on ? ' is-active' : ''}"${on ? ' aria-current="page"' : ''} href="${href}"><span class="tab-ic">${svg(ic, 24)}</span><span class="tab-label">${label}</span></a>`; };
-  return `<nav class="tabbar" aria-label="Primary">${t('home', 'home', 'Home', '/')}${t('areas', 'scale', 'Areas', '/directory/#areas')}${t('near', 'mapPin', 'Near Me', null, true)}${t('browse', 'map', 'Browse', '/directory/')}</nav>`;
+  return `<nav class="tabbar" aria-label="Primary">${t('home', 'home', 'Home', '/')}${t('areas', 'scale', 'Areas', '/areas/')}${t('near', 'mapPin', 'Near Me', null, true)}${t('browse', 'map', 'Browse', '/directory/')}</nav>`;
 }
 function segmentedHTML(listings) {
   const g = groupEntity(listings);
@@ -299,7 +318,7 @@ function champInner(l, rank) {
     <div class="docket-champ-body">
     <div class="docket-rank1">— No. ${rank} —</div>
     <div class="docket-champ-name">${esc(l.name)}</div>
-    <div class="docket-champ-meta">${esc(l.type)} · ${esc(l.cityName)}</div>
+    <div class="docket-champ-meta">${esc(l.type)} · ${esc(l.cityName)}<span class="docket-dist" data-dist></span></div>
     <div class="docket-champ-rate"><span class="docket-star">★</span> ${l.rating ? l.rating.toFixed(1) : '—'} <span class="docket-dim">· ${nf(l.reviews || 0)} reviews${srcFlipHTML(reviewSourceList(l))}</span></div>
     ${champActions(l)}
     </div>`;
@@ -311,7 +330,8 @@ function docketHTML(list) {
   if (!champ) return '';
   // compact data for the client to rebuild the spotlight on click
   const data = ten.map(l => ({ id: l.id, name: l.name, type: l.type, cityName: l.cityName,
-    rating: l.rating || null, reviews: l.reviews || 0, srcs: reviewSourceList(l), av: avHTML(l), image: l.image || null, tel: telHref(l.phone), maps: mapsHref(l), web: l.website || null }));
+    rating: l.rating || null, reviews: l.reviews || 0, srcs: reviewSourceList(l), av: avHTML(l), image: l.image || null, tel: telHref(l.phone), maps: mapsHref(l), web: l.website || null,
+    lat: l.lat ?? null, lng: l.lng ?? null }));
   return `<section class="home-section"><div class="docket" data-docket>
   <span class="docket-corner docket-corner--tl"></span><span class="docket-corner docket-corner--br"></span>
   <div class="docket-head">
@@ -319,11 +339,11 @@ function docketHTML(list) {
     <div class="docket-title">Top 10 lawyers, statewide</div>
     <div class="docket-sub">tap a name to see their details</div>
   </div>
-  <div class="docket-champ" id="docket-champ" data-listing-id="${attr(champ.id)}">${champInner(champ, 1)}</div>
-  <div class="docket-rows" id="docket-rows">${rest.map((l, i) => `<button class="docket-row" data-docket-i="${i + 1}">
+  <div class="docket-champ" id="docket-champ" data-listing-id="${attr(champ.id)}"${champ.lat != null && champ.lng != null ? ` data-lat="${champ.lat}" data-lng="${champ.lng}"` : ''}>${champInner(champ, 1)}</div>
+  <div class="docket-rows" id="docket-rows">${rest.map((l, i) => `<button class="docket-row" data-docket-i="${i + 1}"${l.lat != null && l.lng != null ? ` data-lat="${l.lat}" data-lng="${l.lng}"` : ''}>
     <span class="docket-roman">${romans[i]}</span>
     <span class="docket-av">${avHTML(l)}</span>
-    <span class="docket-row-main"><span class="docket-row-name">${esc(l.name)}</span><span class="docket-row-meta">${esc(l.type)} · ${esc(l.cityName)}</span></span>
+    <span class="docket-row-main"><span class="docket-row-name">${esc(l.name)}</span><span class="docket-row-meta">${esc(l.type)} · ${esc(l.cityName)}<span class="docket-dist" data-dist></span></span></span>
     <span class="docket-row-rate"><span><span class="docket-star">★</span> ${l.rating ? l.rating.toFixed(1) : '—'}</span><span class="docket-row-rev">${nf(l.reviews || 0)} reviews</span></span>
     <span class="docket-save" data-save-id="${attr(l.id)}" role="button" aria-label="Save ${attr(l.name)}" title="Save">${svg('bookmark', 16)}</span>
   </button>`).join('')}</div>
@@ -403,7 +423,7 @@ const itemListLd = (listings, pageUrl) => ({
 const crumbLd = (crumbs) => ({ '@type': 'BreadcrumbList', itemListElement: crumbs.map((c, i) => ({ '@type': 'ListItem', position: i + 1, name: c.name, item: ORIGIN + c.href })) });
 
 // ─── listing page ──────────────────────────────────────────────────────────────
-function listingPage({ urlPath, title, desc, h1, sub, eyebrow, intro, breadcrumbs, listings, sections = [], faq = [], index = true, priority = 0.5, geo = null, notice = '' }) {
+function listingPage({ urlPath, title, desc, h1, sub, eyebrow, intro, breadcrumbs, listings, sections = [], faq = [], index = true, priority = 0.5, geo = null, notice = '', nearby = null }) {
   const canonical = ORIGIN + '/' + urlPath.replace(/\/?$/, '/');
   const ranked = top(listings, 10);            // top 10 still feeds the ItemList structured data
   const all = [...listings].sort(byRank);      // one ranked list for the page (no "Top 10" split)
@@ -424,6 +444,8 @@ ${listings.length > 1 ? segmentedHTML(listings) : ''}
 <div class="section-head"><h2 class="section-title">${esc(h1)}</h2></div>
 <div class="card-list" data-more-list>${all.map((l, i) => cardHTML(l, i < 3 ? i + 1 : null, i >= SHOW ? 'card--collapsed' : '')).join('\n')}</div>
 ${all.length > SHOW ? `<button class="more-btn" data-more-btn>Show ${Math.min(20, all.length - SHOW)} more lawyers</button>` : ''}
+${nearby && nearby.listings.length ? `<div class="section-head"><h2 class="section-title">More lawyers near ${esc(nearby.name)}</h2><span class="section-tagline">From the closest Georgia cities</span></div>
+<div class="card-list">${nearby.listings.map(l => cardHTML(l, null)).join('\n')}</div>` : ''}
 ${sections.join('\n')}
 ${faq.length ? dl(faq) : ''}
 `;
@@ -470,6 +492,7 @@ for (const c of CITIES) {
     eyebrow: c.county ? `${c.county} County, Georgia` : 'Georgia',
     intro, breadcrumbs: [{ name: 'Home', href: '/' }, { name: 'Cities', href: '/directory/' }, { name: c.name, href: `/${c.slug}/` }],
     listings: c.listings, sections, faq, index: c.count >= MIN_INDEX, priority: 0.8, geo: { placename: `${c.name}, GA`, ...(CITY_CENT.get(c.slug) || {}) }, notice,
+    nearby: (() => { const fill = nearbyFill(c.slug, c.count); return fill.length ? { name: c.name, listings: fill } : null; })(),
   });
   for (const { a, list } of areas) {
     const at = top(list, 1)[0], short = stripArea(a.name);
@@ -559,7 +582,7 @@ for (const a of AREAS) {
     h1: `${a.name}s in Georgia`, sub: `${nf(a.count)} listings statewide`,
     eyebrow: 'Georgia, statewide',
     intro: `Compare top rated ${a.name.toLowerCase()}s across Georgia. We list ${nf(a.count)} ${a.group.toLowerCase()} practices, both established law firms and solo attorneys, with ratings, reviews, and direct contact.` + (FACTS[a.slug] ? ' ' + FACTS[a.slug] : ''),
-    breadcrumbs: [{ name: 'Home', href: '/' }, { name: 'Practice areas', href: '/directory/' }, { name: short, href: `/area/${a.slug}/` }],
+    breadcrumbs: [{ name: 'Home', href: '/' }, { name: 'Practice areas', href: '/areas/' }, { name: short, href: `/area/${a.slug}/` }],
     listings: a.listings, sections: [linkSection(`${short} by city`, cities.map(ci => chip(`/${ci.slug}/${a.slug}/`, ci.name, ci.n)))],
     faq, priority: 0.8, geo: { placename: 'Georgia', lat: 32.9, lng: -83.6 },
   });
@@ -569,13 +592,26 @@ for (const a of AREAS) {
 (function directoryPage() {
   const canonical = ORIGIN + '/directory/';
   const body = `
-<p class="area-intro">Browse every Georgia city, county, ZIP code, and practice area in the directory. ${nf(LAWYERS.length)} law firms and attorneys across ${nf(CITIES.length)} cities and ${nf(COUNTIES.length)} counties.</p>
 ${linkSection('Practice areas', AREAS.map(a => chip(`/area/${a.slug}/`, stripArea(a.name), a.count)))}
 <div id="cities"></div>${linkSection(`Cities (${nf(CITIES.length)})`, [...CITIES].sort((a, b) => a.name.localeCompare(b.name)).map(c => chip(`/${c.slug}/`, c.name, c.count)))}
 <div id="counties"></div>${linkSection(`Counties (${nf(COUNTIES.length)})`, [...COUNTIES].sort((a, b) => a.name.localeCompare(b.name)).map(c => chip(`/county/${c.slug}/`, `${c.name} County`, c.count)))}
 <div id="zips"></div>${linkSection(`ZIP codes (${nf(ZIPS.length)})`, [...ZIPS].sort((a, b) => a.slug.localeCompare(b.slug)).map(z => chip(`/zip/${z.slug}/`, z.slug, z.count)))}`;
   const jsonld = { '@context': 'https://schema.org', '@graph': [{ '@type': 'CollectionPage', name: `Directory | ${SITE}`, url: canonical }, crumbLd([{ name: 'Home', href: '/' }, { name: 'Directory', href: '/directory/' }])] };
-  out('directory', pageShell({ title: `Browse Georgia Lawyers by City, County and ZIP | ${SITE}`, desc: `Directory of ${nf(LAWYERS.length)} lawyers and law firms across ${nf(CITIES.length)} Georgia cities, ${nf(COUNTIES.length)} counties, and ${nf(ZIPS.length)} ZIP codes.`, canonical, h1: 'Browse the directory', sub: `${nf(LAWYERS.length)} lawyers across ${nf(CITIES.length)} cities`, eyebrow: 'Georgia', breadcrumbs: [{ name: 'Home', href: '/' }, { name: 'Directory', href: '/directory/' }], jsonld, body }), { index: true, priority: 0.9 });
+  out('directory', pageShell({ title: `Browse Georgia Lawyers by City, County and ZIP | ${SITE}`, desc: `Browse every Georgia city, county, ZIP code, and practice area in the directory. ${nf(LAWYERS.length)} law firms and attorneys across ${nf(CITIES.length)} cities and ${nf(COUNTIES.length)} counties.`, canonical, h1: 'Browse the directory', sub: `${nf(LAWYERS.length)} lawyers across ${nf(CITIES.length)} cities`, eyebrow: 'Georgia', breadcrumbs: [{ name: 'Home', href: '/' }, { name: 'Directory', href: '/directory/' }], jsonld, body }), { index: true, priority: 0.9 });
+})();
+
+// ── practice-areas hub (/areas/) ───────────────────────────────────────────────
+(function areasPage() {
+  const canonical = ORIGIN + '/areas/';
+  const ordered = [...AREAS].sort((a, b) => b.count - a.count);
+  const body = `
+<p class="area-intro">Browse Georgia lawyers by what you need help with. We list ${nf(LAWYERS.length)} law firms and attorneys across ${ordered.length} practice areas, from personal injury and criminal defense to family law, real estate, and bankruptcy, each with ratings, reviews, and one tap contact.</p>
+${linkSection(`Practice areas (${ordered.length})`, ordered.map(a => chip(`/area/${a.slug}/`, stripArea(a.name), a.count)))}`;
+  const jsonld = { '@context': 'https://schema.org', '@graph': [
+    { '@type': 'CollectionPage', name: `Practice areas | ${SITE}`, url: canonical },
+    { '@type': 'ItemList', itemListElement: ordered.map((a, i) => ({ '@type': 'ListItem', position: i + 1, name: stripArea(a.name), url: ORIGIN + `/area/${a.slug}/` })) },
+    crumbLd([{ name: 'Home', href: '/' }, { name: 'Practice areas', href: '/areas/' }]) ] };
+  out('areas', pageShell({ title: `Browse Lawyers by Practice Area in Georgia | ${SITE}`, desc: `Find Georgia lawyers by practice area. Personal injury, criminal defense, family, real estate, bankruptcy and more, with ratings, reviews, and direct contact.`, canonical, h1: 'Practice areas', sub: `${ordered.length} areas of law across Georgia`, eyebrow: 'Georgia', breadcrumbs: [{ name: 'Home', href: '/' }, { name: 'Practice areas', href: '/areas/' }], jsonld, body, tab: 'areas' }), { index: true, priority: 0.9 });
 })();
 
 // ── home section builders ─────────────────────────────────────────────────────

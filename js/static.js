@@ -4,10 +4,10 @@
 // tracking, the entity filter, "show more" pagination, "near me" → your city,
 // the near-you banner, and the search box. Content is already in the HTML.
 
-import { isSaved, toggleSave, markVisited, counts } from './lib/saved.js?v=0.25.0';
-import { CITY_CENTROIDS } from './data/city-centroids.js?v=0.25.0';
-import { puffFrom } from './lib/confetti.js?v=0.25.0';
-import { track, listingOf, grantConsent } from './lib/analytics.js?v=0.25.0';
+import { isSaved, toggleSave, markVisited, counts } from './lib/saved.js?v=0.27.10';
+import { CITY_CENTROIDS } from './data/city-centroids.js?v=0.27.10';
+import { puffFrom } from './lib/confetti.js?v=0.27.10';
+import { track, listingOf, grantConsent } from './lib/analytics.js?v=0.27.10';
 
 const PIN = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>';
 
@@ -21,6 +21,8 @@ const GEO_KEY = 'gal.geo';
 const GEO_OPTS = { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 };
 const saveGeo = (slug, lat, lng) => { try { localStorage.setItem(GEO_KEY, JSON.stringify({ slug, lat, lng, at: Date.now() })); } catch { /* private mode */ } };
 const loadGeo = () => { try { return JSON.parse(localStorage.getItem(GEO_KEY)); } catch { return null; } };
+const clearGeo = () => { try { localStorage.removeItem(GEO_KEY); } catch { /* private mode */ } };
+const X_IC = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
 
 const setCounts = () => {
   const c = counts();
@@ -134,6 +136,10 @@ function nearestCity(lat, lng) {
   return best;
 }
 function goNear(btn) {
+  // Already pinned to a city? Just take them back there, no re-detect. (The tab
+  // is locked while you're on that city's page, so this only fires when away.)
+  const geo = loadGeo() || {};
+  if (geo.slug && CITY_CENTROIDS[geo.slug]) { location.href = `/${geo.slug}/`; return; }
   const orig = btn.innerHTML;
   btn.innerHTML = '<span>Finding your city…</span>'; btn.disabled = true;
   const bail = () => { location.href = '/directory/'; };
@@ -149,6 +155,61 @@ function goNear(btn) {
     GEO_OPTS);
 }
 
+// Reflect location state on the "Near Me" tab: green once a city is pinned,
+// gently shaking (an invitation to tap) until then. State lives in localStorage,
+// so it follows the visitor across every page. Once pinned, the label also swaps
+// from "Near Me" to "Near <City>" so the visitor sees which place is remembered.
+const cityLabel = (slug) => {
+  const c = CITY_CENTROIDS[slug];
+  return (c && c.name) || slug.replace(/-/g, ' ').replace(/\b\w/g, m => m.toUpperCase());
+};
+// Trailing-slash normalize so '/marietta', '/marietta/', and '/marietta/index.html'
+// all compare equal when matching a tab's destination to the current page.
+const normPath = (p) => { p = (p || '').replace(/index\.html$/, ''); return p.endsWith('/') ? p : p + '/'; };
+const markNearTab = () => {
+  const geo = loadGeo() || {};
+  const pinned = !!(geo.slug && CITY_CENTROIDS[geo.slug]);
+  const city = pinned ? cityLabel(geo.slug) : '';
+  const here = normPath(location.pathname);
+  document.querySelectorAll('[data-near]').forEach(b => {
+    b.classList.toggle('tab--located', pinned);
+    b.classList.toggle('tab--locate', !pinned);
+    // Tab bar uses .tab-label ("Near Me"); the home hero button uses a bare <span>
+    // ("Find lawyers near me"). Stash the original once, then swap in the city.
+    const el = b.querySelector('.tab-label') || b.querySelector('span:not(.tab-ic)');
+    if (!el) return;
+    if (el.dataset.nearLabel == null) el.dataset.nearLabel = el.textContent;
+    const base = el.dataset.nearLabel;
+    el.textContent = pinned ? base.replace(/\bme\b\s*$/i, city) : base;
+  });
+  // Lock whichever tab points at the page you're already on, so it is not
+  // clickable. The Near tab points at the pinned city, so it locks only while
+  // you are on that city's page; away from it, tapping returns you there.
+  document.querySelectorAll('.tabbar .tab').forEach(tab => {
+    const dest = tab.matches('[data-near]') ? (pinned ? `/${geo.slug}/` : null) : tab.getAttribute('href');
+    const current = !!dest && normPath(dest) === here;
+    tab.classList.toggle('tab--current', current);
+    tab.toggleAttribute('aria-disabled', current);
+  });
+};
+markNearTab();
+
+// Show how far each lawyer is from the visitor, once a location is remembered.
+// Distance is computed client-side (the static HTML cannot know who is reading
+// it) from the visitor's saved coordinates to each card's data-lat/lng.
+const fillDistances = () => {
+  const geo = loadGeo() || {};
+  const known = typeof geo.lat === 'number' && typeof geo.lng === 'number';
+  document.querySelectorAll('[data-dist]').forEach(el => {
+    const host = el.closest('[data-lat]');           // card article, docket row, or champ
+    const lat = parseFloat(host && host.dataset.lat), lng = parseFloat(host && host.dataset.lng);
+    if (!known || !isFinite(lat) || !isFinite(lng)) { el.textContent = ''; return; }
+    const mi = hav(geo.lat, geo.lng, lat, lng);
+    el.textContent = mi < 0.1 ? 'here' : `${mi < 10 ? mi.toFixed(1) : Math.round(mi)} mi`;
+  });
+};
+fillDistances();
+
 // ── near-you banner (home) — opt-in, no surprise location prompt ──────────────
 const banner = document.querySelector('[data-near-banner]');
 if (banner) {
@@ -156,7 +217,11 @@ if (banner) {
     const c = CITY_CENTROIDS[slug]; if (!c) return ask();
     const name = c.name || slug.replace(/-/g, ' ').replace(/\b\w/g, m => m.toUpperCase());
     const tail = c.n ? `see the top ${c.n} ${name} lawyer${c.n === 1 ? '' : 's'}` : `see ${name} lawyers`;
-    banner.innerHTML = `<a class="near-banner" href="/${slug}/"><span class="near-pin">${PIN}</span><span>Nearest to you: <b>${name}</b> — ${tail}</span><span class="near-go">→</span></a>`;
+    banner.innerHTML = `<div class="near-row"><a class="near-banner" href="/${slug}/"><span class="near-pin">${PIN}</span><span>Nearest to you: <b>${name}</b>, ${tail}</span><span class="near-go">→</span></a><button class="near-clear" type="button" data-near-clear aria-label="Clear saved location" title="Clear location">${X_IC}</button></div>`;
+    banner.querySelector('[data-near-clear]').addEventListener('click', () => {
+      clearGeo(); markNearTab();              // forget the city; Near Me tab returns to shaking
+      if (passive) banner.remove(); else ask();
+    });
   };
   const ask = () => {
     banner.innerHTML = `<button class="near-banner near-banner--prompt"><span class="near-pin">${PIN}</span><span>See top lawyers near you</span></button>`;
@@ -166,7 +231,7 @@ if (banner) {
     p => {
       const { latitude, longitude } = p.coords;
       const s = nearestCity(latitude, longitude);
-      if (s) { saveGeo(s, latitude, longitude); fill(s); } else ask();
+      if (s) { saveGeo(s, latitude, longitude); fill(s); markNearTab(); fillDistances(); } else ask();
     },
     () => ask(), GEO_OPTS);
   // Passive banners (on the listing pages) only ever surface an ALREADY known
@@ -260,6 +325,7 @@ if (docket) {
   const rowsEl = document.getElementById('docket-rows');
   let data = [];
   try { data = JSON.parse(document.getElementById('docket-data').textContent); } catch { /* */ }
+  let current = 0;                                   // which of the 10 is in the No.1 spotlight
   const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
   const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const srcFlip = (names) => {
@@ -281,34 +347,102 @@ if (docket) {
     if (d.web) b.push(`<a class="docket-btn" href="${esc(d.web)}" target="_blank" rel="noopener nofollow" data-visit>${IC_GLOBE}<span>Website</span></a>`);
     return `<div class="docket-actions">${b.join('')}</div>`;
   };
-  const rowHTML = (d, j) => `<button class="docket-row" data-docket-i="${j}">
+  const coords = (d) => (d.lat != null && d.lng != null) ? ` data-lat="${d.lat}" data-lng="${d.lng}"` : '';
+  const rowHTML = (d, j) => `<button class="docket-row" data-docket-i="${j}"${coords(d)}>
     <span class="docket-roman">${ROMAN[j]}</span>
     <span class="docket-av">${d.av}</span>
-    <span class="docket-row-main"><span class="docket-row-name">${esc(d.name)}</span><span class="docket-row-meta">${esc(d.type)} · ${esc(d.cityName)}</span></span>
+    <span class="docket-row-main"><span class="docket-row-name">${esc(d.name)}</span><span class="docket-row-meta">${esc(d.type)} · ${esc(d.cityName)}<span class="docket-dist" data-dist></span></span></span>
     <span class="docket-row-rate"><span><span class="docket-star">★</span> ${rateOf(d)}</span><span class="docket-row-rev">${(d.reviews || 0).toLocaleString()} reviews</span></span>
     <span class="docket-save${saveCls(d.id)}" data-save-id="${esc(d.id)}" role="button" aria-label="Save ${esc(d.name)}" title="Save">${IC_BOOK}</span>
   </button>`;
   const promote = (idx) => {
     const d = data[idx]; if (!d || !champ || !rowsEl) return;
     champ.dataset.listingId = d.id;
+    if (d.lat != null && d.lng != null) { champ.dataset.lat = d.lat; champ.dataset.lng = d.lng; }
+    else { delete champ.dataset.lat; delete champ.dataset.lng; }
     const bg = d.image ? `<img class="docket-champ-bg" src="${esc(d.image)}" alt="" loading="lazy" decoding="async" aria-hidden="true"><div class="docket-champ-scrim" aria-hidden="true"></div>` : '';
     champ.innerHTML = `${bg}<button class="docket-champ-save${saveCls(d.id)}" data-save-id="${esc(d.id)}" aria-label="Save ${esc(d.name)}" title="Save">${IC_BOOK}</button>
       <div class="docket-champ-body">
       <div class="docket-rank1">— No. ${idx + 1} —</div>
       <div class="docket-champ-name">${esc(d.name)}</div>
-      <div class="docket-champ-meta">${esc(d.type)} · ${esc(d.cityName)}</div>
+      <div class="docket-champ-meta">${esc(d.type)} · ${esc(d.cityName)}<span class="docket-dist" data-dist></span></div>
       <div class="docket-champ-rate"><span class="docket-star">★</span> ${rateOf(d)} <span class="docket-dim">· ${(d.reviews || 0).toLocaleString()} reviews${srcFlip(d.srcs)}</span></div>
       ${actions(d)}
       </div>`;
     rowsEl.innerHTML = data.map((x, j) => j === idx ? '' : rowHTML(x, j)).join('');
+    fillDistances();                                  // re-stamp distances on the rebuilt champ + rows
     initFlips(champ);
+    current = idx;
     champ.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    if (narrate) announce(idx);                        // read the newly focused lawyer
   };
   rowsEl && rowsEl.addEventListener('click', (e) => {
     if (e.target.closest('[data-save-id]')) return;   // saving shouldn't promote
     const row = e.target.closest('[data-docket-i]');
     if (row) promote(+row.dataset.docketI);
   });
+
+  // ── announcer: a deep voice introduces whichever lawyer is in the spotlight ───
+  // Progressive enhancement via the Web Speech API. The speaker button in the
+  // top-left toggles narration; while on, promoting a lawyer reads a one-line
+  // intro. Absent or blocked speech support, the button simply never appears.
+  let narrate = false;
+  let announce = () => {};                            // assigned below when speech is supported
+  const SPEAKER ='<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>';
+  if ('speechSynthesis' in window) {
+    const synth = window.speechSynthesis;
+    let voice = null;
+    const pickVoice = () => {
+      const vs = synth.getVoices() || [];
+      const prefer = ['Daniel', 'Arthur', 'Aaron', 'Fred', 'Google UK English Male', 'Microsoft Guy', 'Microsoft David', 'Rishi', 'Oliver'];
+      voice = prefer.map(n => vs.find(v => v.name.includes(n))).find(Boolean)
+        || vs.find(v => /^en/i.test(v.lang) && /male/i.test(v.name))
+        || vs.find(v => /^en[-_]?(GB|US|AU)/i.test(v.lang)) || vs[0] || null;
+    };
+    pickVoice();
+    synth.addEventListener && synth.addEventListener('voiceschanged', pickVoice);
+
+    const WORD = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+    const introOf = (d, idx) => {
+      const area = d.type ? `${d.type.toLowerCase()} ` : '';
+      const where = d.cityName ? ` located in ${d.cityName}, Georgia` : ' in Georgia';
+      const rated = d.rating ? `, with a ${d.rating.toFixed(1)} star rating` : '';
+      return `Number ${WORD[idx] || idx + 1}. ${d.name}, a top rated ${area}practice${where}${rated}.`;
+    };
+
+    const spk = document.createElement('button');
+    spk.type = 'button';
+    spk.className = 'docket-speak';
+    spk.setAttribute('aria-pressed', 'false');
+    spk.setAttribute('aria-label', 'Hear an introduction to the top lawyers');
+    spk.title = 'Hear an introduction';
+    spk.innerHTML = SPEAKER;
+    docket.appendChild(spk);
+
+    announce = (idx) => {
+      const d = data[idx]; if (!d) return;
+      synth.cancel();
+      const u = new SpeechSynthesisUtterance(introOf(d, idx));
+      if (voice) u.voice = voice;
+      u.pitch = 0.5; u.rate = 0.92; u.volume = 1;      // low pitch → a deep voice
+      u.onend = u.onerror = () => spk.classList.remove('is-speaking');
+      spk.classList.add('is-speaking');
+      synth.speak(u);
+    };
+
+    spk.addEventListener('click', () => {
+      if (narrate || synth.speaking) {                 // turn narration off
+        narrate = false; synth.cancel();
+        spk.classList.remove('is-on', 'is-speaking'); spk.setAttribute('aria-pressed', 'false');
+      } else {                                          // turn it on and read the current focus
+        narrate = true;
+        spk.classList.add('is-on'); spk.setAttribute('aria-pressed', 'true');
+        announce(current);
+      }
+    });
+    // Never keep talking into a backgrounded tab.
+    document.addEventListener('visibilitychange', () => { if (document.hidden) { narrate = false; synth.cancel(); spk.classList.remove('is-on', 'is-speaking'); spk.setAttribute('aria-pressed', 'false'); } });
+  }
 }
 
 // ── Cookie consent (GA4 Consent Mode v2) ─────────────────────────────────────
