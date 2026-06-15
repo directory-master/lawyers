@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(node -e \"const f='package.json',p=require\\('./'+f\\);const[a,b,c]=p.version.split\\('.'\\).map\\(Number\\);p.version=[a,b,c+1].join\\('.'\\);require\\('fs'\\).writeFileSync\\(f,JSON.stringify\\(p,null,2\\)+'\\\\n'\\);console.log\\('version ->',p.version\\)\")",
-      "Bash(awk '/More lawyers near/{f=1} f' chatsworth/index.html)"
+      "Bash(awk '/More lawyers near/{f=1} f' chatsworth/index.html)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/)",
+      "Bash(curl -s http://localhost:8011/)"
     ]
   }
 }

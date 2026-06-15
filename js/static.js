@@ -4,10 +4,10 @@
 // tracking, the entity filter, "show more" pagination, "near me" → your city,
 // the near-you banner, and the search box. Content is already in the HTML.
 
-import { isSaved, toggleSave, markVisited, counts } from './lib/saved.js?v=0.27.10';
-import { CITY_CENTROIDS } from './data/city-centroids.js?v=0.27.10';
-import { puffFrom } from './lib/confetti.js?v=0.27.10';
-import { track, listingOf, grantConsent } from './lib/analytics.js?v=0.27.10';
+import { isSaved, toggleSave, markVisited, counts } from './lib/saved.js?v=0.27.13';
+import { CITY_CENTROIDS } from './data/city-centroids.js?v=0.27.13';
+import { puffFrom } from './lib/confetti.js?v=0.27.13';
+import { track, listingOf, grantConsent } from './lib/analytics.js?v=0.27.13';
 
 const PIN = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>';
 
@@ -386,62 +386,82 @@ if (docket) {
   // Progressive enhancement via the Web Speech API. The speaker button in the
   // top-left toggles narration; while on, promoting a lawyer reads a one-line
   // intro. Absent or blocked speech support, the button simply never appears.
-  let narrate = false;
+  let narrate = false;                                // false = muted (the default)
   let announce = () => {};                            // assigned below when speech is supported
-  const SPEAKER ='<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>';
+  const SPK_BASE = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
+  const SPEAKER_ON = SPK_BASE + '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>';
+  const SPEAKER_MUTED = SPK_BASE + '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>';
   if ('speechSynthesis' in window) {
     const synth = window.speechSynthesis;
     let voice = null;
     const pickVoice = () => {
-      const vs = synth.getVoices() || [];
-      const prefer = ['Daniel', 'Arthur', 'Aaron', 'Fred', 'Google UK English Male', 'Microsoft Guy', 'Microsoft David', 'Rishi', 'Oliver'];
-      voice = prefer.map(n => vs.find(v => v.name.includes(n))).find(Boolean)
-        || vs.find(v => /^en/i.test(v.lang) && /male/i.test(v.name))
-        || vs.find(v => /^en[-_]?(GB|US|AU)/i.test(v.lang)) || vs[0] || null;
+      const en = (synth.getVoices() || []).filter(v => /^en\b|^en[-_]/i.test(v.lang));
+      const novelty = /fred|zarvox|albert|bahh|bells|boing|bubbles|cellos|wobble|trinoids|whisper|organ|good news|bad news/i;
+      // Australian or Canadian accent, as requested. Prefer those by language tag,
+      // favouring named AU/CA voices (Lee/Gordon are macOS AU males) and any
+      // "Enhanced"/"Premium" variant, then any en-AU / en-CA voice at all.
+      const accent = en.filter(v => /en[-_](AU|CA)/i.test(v.lang) && !novelty.test(v.name));
+      const named = ['Lee', 'Gordon', 'Matilda', 'Karen', 'Catherine', 'Google'];
+      voice = named.map(n => accent.find(v => v.name.includes(n) && /enhanced|premium/i.test(v.name)) || accent.find(v => v.name.includes(n))).find(Boolean)
+        || accent.find(v => /enhanced|premium/i.test(v.name))
+        || accent[0]
+        // Fallback if the OS has no AU/CA voice installed: a natural, non-robotic voice.
+        || en.find(v => /enhanced|premium|siri/i.test(v.name) && !novelty.test(v.name))
+        || en.find(v => /\b(Alex|Tom|Daniel|Aaron)\b/.test(v.name))
+        || en.find(v => !novelty.test(v.name))
+        || en[0] || null;
     };
     pickVoice();
     synth.addEventListener && synth.addEventListener('voiceschanged', pickVoice);
 
     const WORD = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
     const introOf = (d, idx) => {
-      const area = d.type ? `${d.type.toLowerCase()} ` : '';
-      const where = d.cityName ? ` located in ${d.cityName}, Georgia` : ' in Georgia';
-      const rated = d.rating ? `, with a ${d.rating.toFixed(1)} star rating` : '';
-      return `Number ${WORD[idx] || idx + 1}. ${d.name}, a top rated ${area}practice${where}${rated}.`;
+      // Short sentences on purpose: periods are the only "pause" the Web Speech
+      // API gives us, so each clause becomes its own beat.
+      const lines = [`Number ${WORD[idx] || idx + 1}.`, `${d.name}.`];
+      const area = d.type ? `a top rated ${d.type.toLowerCase()} practice` : 'a top rated practice';
+      lines.push(d.cityName ? `${area}, in ${d.cityName}, Georgia.` : `${area}, in Georgia.`);
+      if (d.rating) lines.push(`Rated ${d.rating.toFixed(1)} stars.`);
+      return lines.join(' ');
     };
 
     const spk = document.createElement('button');
     spk.type = 'button';
     spk.className = 'docket-speak';
-    spk.setAttribute('aria-pressed', 'false');
-    spk.setAttribute('aria-label', 'Hear an introduction to the top lawyers');
-    spk.title = 'Hear an introduction';
-    spk.innerHTML = SPEAKER;
     docket.appendChild(spk);
 
+    // Muted is the default. setMute(true) silences and shows the crossed-out
+    // speaker; setMute(false) unmutes and (when asked) reads the current focus.
+    const setMute = (muted) => {
+      narrate = !muted;
+      spk.innerHTML = muted ? SPEAKER_MUTED : SPEAKER_ON;
+      spk.classList.toggle('is-muted', muted);
+      spk.classList.toggle('is-on', !muted);
+      spk.setAttribute('aria-pressed', String(!muted));
+      spk.setAttribute('aria-label', muted ? 'Unmute lawyer introductions' : 'Mute lawyer introductions');
+      spk.title = muted ? 'Unmute introductions' : 'Mute introductions';
+      if (muted) { synth.cancel(); spk.classList.remove('is-speaking'); }
+    };
+    setMute(true);                                     // start muted
+
     announce = (idx) => {
+      if (!narrate) return;
       const d = data[idx]; if (!d) return;
       synth.cancel();
       const u = new SpeechSynthesisUtterance(introOf(d, idx));
       if (voice) u.voice = voice;
-      u.pitch = 0.5; u.rate = 0.92; u.volume = 1;      // low pitch → a deep voice
+      u.pitch = 0.9; u.rate = 0.96; u.volume = 1;      // slightly deep, paced, not a groan
       u.onend = u.onerror = () => spk.classList.remove('is-speaking');
       spk.classList.add('is-speaking');
       synth.speak(u);
     };
 
     spk.addEventListener('click', () => {
-      if (narrate || synth.speaking) {                 // turn narration off
-        narrate = false; synth.cancel();
-        spk.classList.remove('is-on', 'is-speaking'); spk.setAttribute('aria-pressed', 'false');
-      } else {                                          // turn it on and read the current focus
-        narrate = true;
-        spk.classList.add('is-on'); spk.setAttribute('aria-pressed', 'true');
-        announce(current);
-      }
+      if (narrate) setMute(true);                      // mute
+      else { setMute(false); announce(current); }      // unmute and read the current focus
     });
-    // Never keep talking into a backgrounded tab.
-    document.addEventListener('visibilitychange', () => { if (document.hidden) { narrate = false; synth.cancel(); spk.classList.remove('is-on', 'is-speaking'); spk.setAttribute('aria-pressed', 'false'); } });
+    // Never keep talking into a backgrounded tab; mute when it is hidden.
+    document.addEventListener('visibilitychange', () => { if (document.hidden) setMute(true); });
   }
 }
 
