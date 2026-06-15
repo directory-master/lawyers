@@ -604,6 +604,7 @@ body.static { padding-bottom: var(--tabbar-h); }
 .foot-copy { margin-left: auto; font-size: 10.5px; color: rgba(255,255,255,.4); text-align: right; line-height: 1.5; }
 .foot-made { padding: 14px 22px 0; font-size: 11px; color: rgba(255,255,255,.4); }
 .foot-made a { color: var(--gilt-soft); font-weight: 600; }
+.foot-credit { padding: 4px 22px 0; font-size: 10.5px; color: rgba(255,255,255,.32); }
 
 /* ── The Georgia Docket (Top 10) ─────────────────────────────────────────── */
 .docket { position: relative; background: var(--ink); border-radius: 14px; padding: 22px 16px 16px;

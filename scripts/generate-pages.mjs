@@ -299,6 +299,7 @@ function footerHTML() {
   <p class="foot-disclaimer"><b>Attorney advertising.</b> ${SITE} is an independent directory, not a law firm or lawyer referral service, and does not provide legal advice or endorse any attorney. Listings marked Premium are paid placements; rankings reflect ratings and verified reviews and are not for sale. Prior results do not guarantee a similar outcome. Contacting an attorney through this site does not create an attorney client relationship.</p>
   <div class="foot-brand">${TEMPLE}<div><div class="foot-brand-name">${SITE}</div><div class="foot-brand-tag">Every licensed attorney in Georgia.</div></div><div class="foot-copy">© ${YEAR}<br>Atlanta, GA</div></div>
   <p class="foot-made">Made by <a href="https://artivicolab.com" target="_blank" rel="noopener">Artivicolab</a> · <a href="${m(SITE)}">Contact</a></p>
+  <p class="foot-credit">Listing photos via Bing Maps.</p>
 </footer>`;
 }
 
