@@ -601,11 +601,11 @@ for (const a of AREAS) {
 
 // ── individual listing profiles (/lawyer/<id>/) ────────────────────────────────
 // Each listing gets its own crawlable page so it can rank for navigational
-// "<firm name> <city/zip>" searches (Search Console shows these landing on the
-// city/zip pages today, where the firm is just one card among many). To protect
-// a young domain from thin/doorway penalties, only listings with real signal
-// (a rating OR a website) are indexed; the bare ones are noindex,follow so they
-// stay crawlable and pass link equity without competing as thin pages.
+// "<firm name> <city/zip>" searches. To protect a young domain from thin/doorway
+// penalties, these profiles are noindex,follow by default (see `index` below):
+// they stay crawlable and pass link equity to the city/area pages without
+// flooding the index with 5,000+ near-duplicate thin pages. Only PAID listings
+// are indexed standalone.
 function listingProfilePage(l) {
   const area = AREAS.find(a => a.slug === l.typeSlug);
   const short = area ? stripArea(area.name) : l.type;
@@ -650,7 +650,13 @@ function listingProfilePage(l) {
     { name: l.name, href: `/lawyer/${l.id}/` },
   ].filter(Boolean);
 
-  const index = !!(l.rating || l.website);
+  // Lean index for a young domain: 5,000+ near-duplicate profile pages get a new
+  // site crawl-throttled and distrusted. Profiles stay live and crawlable (cards
+  // link to them, so UX is unchanged) but are noindex,follow by default, so the
+  // sitemap is just the strong aggregation pages (city / city×area / county / zip
+  // / area). A PAID listing earns an indexed standalone profile as part of its
+  // placement; flip the default back once the domain has authority.
+  const index = l.tier === 'standard' || l.tier === 'premium';
   const metaDesc = clamp(lede, 158);
   const body = `
 ${cardHTML(l, null, 'lc--solo', false)}
