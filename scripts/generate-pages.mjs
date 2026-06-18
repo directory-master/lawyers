@@ -175,6 +175,17 @@ const FACTS = {
   'tax-irs': "Tax attorneys help Georgians with IRS audits, back taxes, liens and levies, offers in compromise, and disputes with the Georgia Department of Revenue. Many offer a free consultation to review your notice before you respond.",
   'general-practice': "General practice lawyers handle a range of everyday legal matters and can refer you to a specialist when a case calls for one. Most offer a consultation to review your situation first.",
 };
+// Benefit first, query matching ledes for the high demand practice areas (the
+// pages actually pulling impressions in Search Console). These become BOTH the
+// on-page intro and the Google snippet (the meta description is a clamp of the
+// intro), so they open with the searcher's words ("Find and compare the best…")
+// and the fact that matters most for that area. Other areas fall back to the
+// generic intro + FACTS.
+const AREA_LEDE = {
+  'personal-injury': (a) => `Find and compare the best personal injury lawyers in Georgia. We list ${nf(a.count)} injury and accident attorneys statewide, from established law firms to solo practitioners, with ratings, real reviews, and one tap to call. Most work on contingency, so you pay no fee unless they win your case.`,
+  'criminal-defense': (a) => `Find and compare the best criminal defense lawyers in Georgia. We list ${nf(a.count)} criminal defense attorneys statewide, with ratings, reviews, and one tap to call. Many offer a free first consultation, and acting quickly gives your defense the most room to work.`,
+  'bankruptcy': (a) => `Find and compare the best bankruptcy lawyers in Georgia. We list ${nf(a.count)} bankruptcy attorneys statewide, with ratings, reviews, and one tap to call. Whether you are weighing Chapter 7 or Chapter 13, many offer a free first consultation to review your debts.`,
+};
 const dl = (faq) => `<section class="faq"><h2 class="section-title">Frequently asked questions</h2>${faq.map(f => `<div class="faq-item"><h3 class="faq-q">${esc(f.q)}</h3><p class="faq-a">${esc(f.a)}</p></div>`).join('')}</section>`;
 const faqLd = (faq) => ({ '@type': 'FAQPage', mainEntity: faq.map(f => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) });
 
@@ -203,7 +214,7 @@ function srcFlipHTML(names) {
   const words = names.map((s, i) => `<span class="src-word${i === 0 ? ' is-on' : ''}">${esc(s)}</span>`).join('');
   return ` from <span class="srcflip" data-srcflip><span class="src-sizer" aria-hidden="true">${esc(sizer)}</span>${words}</span>`;
 }
-function cardHTML(l, rank, extraClass = '') {
+function cardHTML(l, rank, extraClass = '', link = true) {
   const tel = telHref(l.phone);
   const kind = l.entity === 'firm' ? 'LAW FIRM' : 'ATTORNEY';
   const thumb = l.image
@@ -218,7 +229,7 @@ function cardHTML(l, rank, extraClass = '') {
     <button class="lc-save" data-save-id="${attr(l.id)}" aria-pressed="false" aria-label="Save ${attr(l.name)}" title="Save">${svg('bookmark', 18)}</button>
     <div class="lc-main">${thumb}
       <div class="lc-info">
-        <h3 class="lc-name">${esc(l.name)}</h3>
+        <h3 class="lc-name">${link ? `<a class="lc-namelink" href="/lawyer/${attr(l.id)}/">${esc(l.name)}</a>` : esc(l.name)}</h3>
         <div class="lc-sub">${esc(l.type)}</div>
         <div class="lc-meta">${ratingPill}${reviews}</div>
         <div class="lc-addr">${svg('mapPin', 15)}<span>${esc(l.address || l.cityName + ', GA')}</span></div>
@@ -235,14 +246,13 @@ function cardHTML(l, rank, extraClass = '') {
 }
 function promoCardHTML(tier) {
   const s = tier === 'premium'
-    ? { tag: 'PREMIUM', price: '$20', blurb: 'Top of the page across your city and practice area, with your photo, hours, and a consultation button.' }
-    : { tag: 'STANDARD', price: '$10', blurb: 'Listed above the free results in your city, with your photo, hours, and website link.' };
+    ? { tag: 'PREMIUM', blurb: 'Top of the page across your city and practice area, with your photo, hours, and a consultation button.' }
+    : { tag: 'STANDARD', blurb: 'Listed above the free results in your city, with your photo, hours, and website link.' };
   return `<article class="card promo promo--${tier}">
   <div class="promo-tag">${svg('sparkles', 13, true)}${s.tag}</div>
-  <div class="promo-price">${s.price}<span class="promo-per">/mo</span></div>
   <h3 class="promo-title">Your practice here</h3>
   <p class="promo-blurb">${s.blurb}</p>
-  <a class="btn ${tier === 'premium' ? 'btn--gold' : 'btn--primary'} promo-btn" href="mailto:${CONTACT}?subject=${encodeURIComponent(s.tag.charAt(0) + s.tag.slice(1).toLowerCase() + ' listing (' + s.price + '/mo)')}">Claim this spot</a>
+  <a class="btn ${tier === 'premium' ? 'btn--gold' : 'btn--primary'} promo-btn" href="/pricing/">See pricing</a>
 </article>`;
 }
 // Premium + standard placement slots, shown on every listing page (like home).
@@ -578,16 +588,101 @@ for (const a of AREAS) {
   ].filter(Boolean);
   listingPage({
     urlPath: `area/${a.slug}`,
-    title: `Best ${a.name}s in Georgia (${YEAR}) | Top Rated | ${SITE}`,
+    title: `Best ${a.name}s in Georgia (${YEAR}) | ${SITE}`,
     desc: `Compare the top ${short.toLowerCase()} lawyers across Georgia. ${nf(a.count)} ${a.group.toLowerCase()} practices with ratings, reviews, and direct contact. Updated ${YEAR}.`,
     h1: `${a.name}s in Georgia`, sub: `${nf(a.count)} listings statewide`,
     eyebrow: 'Georgia, statewide',
-    intro: `Compare top rated ${a.name.toLowerCase()}s across Georgia. We list ${nf(a.count)} ${a.group.toLowerCase()} practices, both established law firms and solo attorneys, with ratings, reviews, and direct contact.` + (FACTS[a.slug] ? ' ' + FACTS[a.slug] : ''),
+    intro: AREA_LEDE[a.slug] ? AREA_LEDE[a.slug](a) : (`Compare top rated ${a.name.toLowerCase()}s across Georgia. We list ${nf(a.count)} ${a.group.toLowerCase()} practices, both established law firms and solo attorneys, with ratings, reviews, and direct contact.` + (FACTS[a.slug] ? ' ' + FACTS[a.slug] : '')),
     breadcrumbs: [{ name: 'Home', href: '/' }, { name: 'Practice areas', href: '/areas/' }, { name: short, href: `/area/${a.slug}/` }],
     listings: a.listings, sections: [linkSection(`${short} by city`, cities.map(ci => chip(`/${ci.slug}/${a.slug}/`, ci.name, ci.n)))],
     faq, priority: 0.8, geo: { placename: 'Georgia', lat: 32.9, lng: -83.6 },
   });
 }
+
+// ── individual listing profiles (/lawyer/<id>/) ────────────────────────────────
+// Each listing gets its own crawlable page so it can rank for navigational
+// "<firm name> <city/zip>" searches (Search Console shows these landing on the
+// city/zip pages today, where the firm is just one card among many). To protect
+// a young domain from thin/doorway penalties, only listings with real signal
+// (a rating OR a website) are indexed; the bare ones are noindex,follow so they
+// stay crawlable and pass link equity without competing as thin pages.
+function listingProfilePage(l) {
+  const area = AREAS.find(a => a.slug === l.typeSlug);
+  const short = area ? stripArea(area.name) : l.type;
+  const city = CITIES.find(c => c.slug === l.city);
+  const kind = l.entity === 'firm' ? 'law firm' : 'attorney';
+  const canonical = ORIGIN + `/lawyer/${l.id}/`;
+  const rated = l.rating ? `rated ${l.rating.toFixed(1)} stars${l.reviews ? ` across ${nf(l.reviews)} review${l.reviews === 1 ? '' : 's'}` : ''}` : '';
+  const lede = `${l.name} is ${a_an(kind)} ${kind} practicing ${l.type.toLowerCase()} in ${l.cityName}, Georgia${l.countyName ? `, ${l.countyName} County` : ''}${rated ? `, ${rated}` : ''}. Call, get directions, or visit the website in one tap.`;
+  const aboutBits = [];
+  if (l.address) aboutBits.push(`${l.name} is located at ${l.address}.`);
+  if (l.hoursText) aboutBits.push(`Hours: ${l.hoursText}.`);
+  aboutBits.push(`${l.name} is listed under ${l.type} and serves ${l.cityName} and the surrounding ${l.countyName ? `${l.countyName} County` : 'Georgia'} area.`);
+  if (FACTS[l.typeSlug]) aboutBits.push(FACTS[l.typeSlug]);
+  const about = aboutBits.join(' ');
+
+  const social = [l.facebook, l.instagram, l.twitter].filter(Boolean);
+  const near = nearbyCities(l.city, 6);
+  const nearArea = area ? near.filter(n => n.listings.some(x => x.typeSlug === l.typeSlug)).slice(0, 4) : [];
+  const sections = [
+    linkSection('Explore nearby', [
+      city ? chip(`/${l.city}/`, `All ${l.cityName} lawyers`, city.count) : null,
+      area ? chip(`/${l.city}/${l.typeSlug}/`, `${short} in ${l.cityName}`) : null,
+      area ? chip(`/area/${l.typeSlug}/`, `${short} statewide`, area.count) : null,
+      l.zip ? chip(`/zip/${l.zip}/`, `Lawyers in ${l.zip}`) : null,
+      l.countySlug ? chip(`/county/${l.countySlug}/`, `${l.countyName} County`) : null,
+    ].filter(Boolean)),
+    nearArea.length ? linkSection(`${short} lawyers in nearby cities`, nearArea.map(n => chip(`/${n.slug}/${l.typeSlug}/`, `${short} in ${n.name}`))) : '',
+  ].filter(Boolean);
+
+  const faq = [
+    { q: `Where is ${l.name} located?`, a: l.address ? `${l.name} is located at ${l.address}.` : `${l.name} is in ${l.cityName}, Georgia${l.countyName ? `, ${l.countyName} County` : ''}.` },
+    { q: `What kind of lawyer is ${l.name}?`, a: `${l.name} is ${a_an(kind)} ${kind} listed under ${l.type} in ${l.cityName}, GA.` },
+    { q: `How do I contact ${l.name}?`, a: `${l.phone ? `Call ${l.phone}` : `Use the Directions button`}${l.website ? `${l.phone ? ', or ' : ', or '}visit the website` : ''} using the buttons on this page.` },
+    l.rating ? { q: `Is ${l.name} well rated?`, a: `${l.name} is ${rated} from public sources. Ratings and reviews are aggregated and are not an endorsement.` } : null,
+    FACTS[l.typeSlug] ? { q: `What should I know before hiring ${a_an(short)} ${short.toLowerCase()} lawyer in Georgia?`, a: FACTS[l.typeSlug] } : null,
+  ].filter(Boolean);
+
+  const breadcrumbs = [
+    { name: 'Home', href: '/' },
+    { name: l.cityName, href: `/${l.city}/` },
+    area ? { name: short, href: `/${l.city}/${l.typeSlug}/` } : null,
+    { name: l.name, href: `/lawyer/${l.id}/` },
+  ].filter(Boolean);
+
+  const index = !!(l.rating || l.website);
+  const metaDesc = clamp(lede, 158);
+  const body = `
+${cardHTML(l, null, 'lc--solo', false)}
+<section class="profile-about"><div class="section-head"><h2 class="section-title">About ${esc(l.name)}</h2></div><p class="area-intro">${esc(about)}</p></section>
+${sections.join('\n')}
+${faq.length ? dl(faq) : ''}
+${promoSlots()}
+`;
+  const business = {
+    '@type': l.entity === 'attorney' ? 'Attorney' : 'LegalService',
+    '@id': canonical + '#business',
+    name: l.name,
+    image: l.image || undefined,
+    telephone: l.phone || undefined,
+    url: l.website || undefined,
+    address: postalAddress(l),
+    geo: l.lat != null ? { '@type': 'GeoCoordinates', latitude: l.lat, longitude: l.lng } : undefined,
+    areaServed: { '@type': 'City', name: `${l.cityName}, GA` },
+    aggregateRating: l.rating ? { '@type': 'AggregateRating', ratingValue: l.rating, reviewCount: l.reviews || 1 } : undefined,
+    sameAs: social.length ? social : undefined,
+  };
+  const graph = [{ '@type': 'ProfilePage', name: `${l.name} | ${l.cityName}, GA`, description: metaDesc, url: canonical }, business, crumbLd(breadcrumbs)];
+  if (faq.length) graph.push(faqLd(faq));
+  out(`lawyer/${l.id}`, pageShell({
+    title: `${l.name}, ${l.type} in ${l.cityName}, GA | ${SITE}`,
+    desc: metaDesc, canonical, h1: l.name, sub: rated ? `${l.cityName}, GA · ${rated}` : `${l.cityName}, GA`,
+    eyebrow: `${l.type} · ${l.cityName}, GA`, intro: lede, breadcrumbs,
+    jsonld: { '@context': 'https://schema.org', '@graph': graph }, body, index,
+    geo: { placename: `${l.cityName}, GA`, ...(l.lat != null ? { lat: l.lat, lng: l.lng } : {}) }, tab: 'browse',
+  }), { index, priority: l.rating ? 0.5 : 0.4 });
+}
+for (const l of LAWYERS) listingProfilePage(l);
 
 // ── directory hub ─────────────────────────────────────────────────────────────
 (function directoryPage() {
@@ -675,9 +770,9 @@ ${trustBandHTML()}
 <div data-near-banner></div>
 ${qaBarHTML(false)}
 <section class="home-section"><div class="section-head"><h2 class="section-title">Featured Attorneys</h2><span class="section-tagline">Premium placement, seen first</span></div>
-<div class="featured-grid featured-grid--premium">${Array(4).fill(promoCardHTML('premium')).join('')}</div></section>
+<div class="featured-grid featured-grid--premium">${promoCardHTML('premium')}</div></section>
 <section class="home-section"><div class="section-head"><h2 class="section-title">Standard Listings</h2><span class="section-tagline">Listed above the free results</span></div>
-<div class="featured-grid featured-grid--standard">${Array(4).fill(promoCardHTML('standard')).join('')}</div></section>
+<div class="featured-grid featured-grid--standard">${promoCardHTML('standard')}</div></section>
 ${issueFinderHTML()}
 ${citySpotlightsHTML()}
 ${docketHTML(gaTop)}
@@ -857,7 +952,7 @@ self.addEventListener('fetch', (e) => {
 
 // ── prune orphaned page folders (generator writes; this removes the stale) ────
 const RESERVED = new Set(['css', 'js', 'data', 'scripts', 'assets', 'node_modules', '.git', '.github', '.vscode']);
-const HUBS = new Set(['county', 'zip', 'area', 'directory']);
+const HUBS = new Set(['county', 'zip', 'area', 'lawyer', 'directory']);
 let pruned = 0;
 for (const e of readdirSync(ROOT, { withFileTypes: true })) {
   if (!e.isDirectory() || RESERVED.has(e.name)) continue;
