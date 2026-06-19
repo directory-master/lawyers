@@ -33,6 +33,6 @@ const DOWNLOADS = `${process.env.HOME}/Downloads`;
 const SRCS = process.argv.slice(2).length
   ? process.argv.slice(2)
   : (existsSync(DOWNLOADS) ? readdirSync(DOWNLOADS) : [])
-      .filter(f => /^Bing_Maps_Scraper_.*\.csv$/i.test(f)).sort().map(f => join(DOWNLOADS, f));
+      .filter(f => /^(Bing_Maps_Scraper_|Maps-Scraper-net_).*\.csv$/i.test(f)).sort().map(f => join(DOWNLOADS, f));
 
 buildStore(SRCS.flatMap(rowsOf), SRCS.length, 'CSV');

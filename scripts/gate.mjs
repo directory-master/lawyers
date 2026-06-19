@@ -105,8 +105,29 @@ export function parseCSV(text) {
   if (field.length || row.length) { row.push(field); rows.push(row); }
   return rows;
 }
+// Some scrapes come from a different Maps tool (e.g. "Maps-Scraper-net") whose
+// columns carry the same data under different headers. Normalize those onto the
+// canonical Bing field names the importer reads, so every downstream step (gate,
+// store, ratings, stars) is schema-agnostic. Canonical Bing rows already have
+// these keys, so this is a no-op for them. `Rating Info` is synthesized as
+// "Google (<count>)" because that tool's ratings are Google Maps data, which keeps
+// the review count and lets mergeRating accumulate it as a distinct source.
+function normalizeRow(r) {
+  if (!r['Address'] && r['Fulladdress']) r['Address'] = r['Fulladdress'];
+  if (!r['Category'] && r['Categories']) r['Category'] = r['Categories'];
+  if (!r['ID']) r['ID'] = r['Place Id'] || r['Cid'] || '';
+  if (!r['Rating'] && r['Average Rating']) r['Rating'] = r['Average Rating'];
+  if (!r['Open Hours'] && r['Opening hours']) r['Open Hours'] = r['Opening hours'];
+  if (!r['Emails'] && r['Email']) r['Emails'] = r['Email'];
+  if (!r['Rating Info'] && r['Average Rating']) {
+    const n = (r['Review Count'] || '').replace(/[^\d]/g, '');
+    r['Rating Info'] = `Google (${n || 0})`;
+  }
+  return r;
+}
+
 export function rowsOf(path) {
   const raw = parseCSV(readFileSync(path, 'utf8')).filter(r => r.length > 5);
   const header = raw.shift().map(h => h.trim().replace(/^﻿/, '').replace(/^"|"$/g, ''));
-  return raw.map(r => Object.fromEntries(header.map((h, i) => [h, (r[i] || '').trim()])));
+  return raw.map(r => normalizeRow(Object.fromEntries(header.map((h, i) => [h, (r[i] || '').trim()]))));
 }

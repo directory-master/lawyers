@@ -45,6 +45,24 @@ function mergeRating(ratings, rec) {
   return ratings;
 }
 
+// Aggregate a multi-source ratings list into one display rating + total reviews.
+// Reviews ADD UP across sources; the star rating is the review-weighted average so
+// a 116-review 4.4 outweighs a 1-review 5.0.
+function aggRatings(ratings) {
+  const reviews = ratings.reduce((s, x) => s + (x.reviews || 0), 0) || null;
+  const wnum = ratings.reduce((s, x) => s + x.rating * ((x.reviews || 0) + 1), 0);
+  const wden = ratings.reduce((s, x) => s + ((x.reviews || 0) + 1), 0);
+  const rating = wden ? Math.round((wnum / wden) * 10) / 10 : null;
+  return { rating, reviews };
+}
+function pickEmail(raw) {
+  for (const e of (raw || '').split(',').map((s) => s.trim())) {
+    if (!e || e.includes('###') || JUNK_EMAIL.test(e) || JUNK_LOCAL.test(e)) continue;
+    return e;
+  }
+  return null;
+}
+
 // Load every row already warehoused in data/cities/ (raw scraper shape). Importers
 // use this to skip rows that already exist before merging a new source.
 export function loadStore() {
@@ -107,7 +125,7 @@ export function buildStore(csvRows, fileCount, label = 'CSV') {
 
   // ─── build listings from the full durable store ────────────────────────────
   const stats = { files: fileCount, store: kept.length, added: addedToStore, pruned: prunedOff, nonGA: 0, off: 0, dupes: 0 };
-  const seenId = new Set(), seenKey = new Set();
+  const seenId = new Set(), seenKey = new Set(), byKey = new Map();
   const out = [];
   for (const r of kept) {
     const id = r['ID'];
@@ -119,7 +137,30 @@ export function buildStore(csvRows, fileCount, label = 'CSV') {
     const type = inferType(nm, r['Category'] || '');
     if (!type) { stats.off++; continue; }
     const key = `${nm}|${addr}`.toLowerCase();
-    if (seenKey.has(key)) { stats.dupes++; continue; }
+    // this row's rating source(s); cloned so merging never mutates the store row
+    const ratings = (r.ratings && r.ratings.length) ? [...r.ratings] : (ratingOf(r) ? [ratingOf(r)] : []);
+    // Same firm re-scraped from a different tool (an old Bing row plus a fresh
+    // Google row) carries a different scraper ID, so it arrives as a second store
+    // row. Don't drop it: union its rating sources into the listing we already
+    // kept so Google reviews ADD to the running count and re-weight the stars, and
+    // backfill any scraped field the first row was missing.
+    if (seenKey.has(key)) {
+      const keep = byKey.get(key);
+      for (const rec of ratings) keep.ratings = mergeRating(keep.ratings, rec);
+      Object.assign(keep, aggRatings(keep.ratings));
+      keep.image ||= r['Featured image'] || null;
+      keep.hoursText ||= r['Open Hours'] || null;
+      keep.phone ||= r['Phone'] || null;
+      keep.website ||= r['Website'] || null;
+      keep.facebook ||= r['Facebook'] || null;
+      keep.instagram ||= r['Instagram'] || null;
+      keep.twitter ||= r['Twitter'] || null;
+      if (keep.lat == null) keep.lat = parseFloat(r['Latitude']) || null;
+      if (keep.lng == null) keep.lng = parseFloat(r['Longitude']) || null;
+      if (!keep.email) keep.email = pickEmail(r['Emails']);
+      stats.merged = (stats.merged || 0) + 1;
+      continue;
+    }
     seenKey.add(key);
 
     const cityName = cityNameFromAddr(addr);
@@ -131,31 +172,23 @@ export function buildStore(csvRows, fileCount, label = 'CSV') {
       || (addr.match(/(\d{5})(?:-\d{4})?\s*$/) || [])[1]
       || (addr.match(/\b(\d{5})\b/g) || []).pop();
     const zip = zipCand && /^(3[01]\d{3}|39[89]\d{2})$/.test(zipCand) ? zipCand : null;
-    // merged reviews across every source we have seen for this listing
-    const ratings = (r.ratings && r.ratings.length) ? r.ratings : (ratingOf(r) ? [ratingOf(r)] : []);
-    const reviews = ratings.reduce((s, x) => s + (x.reviews || 0), 0) || null;
-    // rating = review-weighted average so a 50-review 4.0 outweighs a 1-review 5.0
-    const wnum = ratings.reduce((s, x) => s + x.rating * ((x.reviews || 0) + 1), 0);
-    const wden = ratings.reduce((s, x) => s + ((x.reviews || 0) + 1), 0);
-    const rating = wden ? Math.round((wnum / wden) * 10) / 10 : null;
+    // review-weighted rating + total reviews across every source seen so far; later
+    // dupe rows (same firm, other source) fold their reviews in via aggRatings above
+    const { rating, reviews } = aggRatings(ratings);
 
-    let email = null;
-    for (const e of (r['Emails'] || '').split(',').map(s => s.trim())) {
-      if (!e || e.includes('###') || JUNK_EMAIL.test(e) || JUNK_LOCAL.test(e)) continue;
-      email = e; break;
-    }
-
-    out.push({
+    const listing = {
       id: kebab(`${nm}-${cityName}`).slice(0, 60),
       name: nm, city: kebab(cityName), cityName, type, entity: entityKindOf(nm),
       tier: r.tier || 'free', paid: r.paid || false, paidAt: r.paidAt || null, paidDays: r.paidDays || 30,
       verified: r.verified || false, barNo: r.barNo || null,
       rating, reviews, ratings, zip,
       lat: parseFloat(r['Latitude']) || null, lng: parseFloat(r['Longitude']) || null,
-      address: addr, phone: r['Phone'] || null, website: r['Website'] || null, email,
+      address: addr, phone: r['Phone'] || null, website: r['Website'] || null, email: pickEmail(r['Emails']),
       image: r['Featured image'] || null, hoursText: r['Open Hours'] || null,
       facebook: r['Facebook'] || null, instagram: r['Instagram'] || null, twitter: r['Twitter'] || null,
-    });
+    };
+    out.push(listing);
+    byKey.set(key, listing);
   }
 
   // guard id collisions → suffix
@@ -179,7 +212,7 @@ export function buildStore(csvRows, fileCount, label = 'CSV') {
   }
   console.log(`Store: ${stats.store} law rows across ${Object.keys(byCityStore).length} per-city files in data/cities/ (+${stats.added} new from ${stats.files} ${label}(s); pruned ${stats.pruned} off-vertical rows).`);
   console.log(`Imported ${out.length} GA law practices from the store.`);
-  console.log(`  dropped: ${stats.nonGA} non-GA, ${stats.off} off-vertical, ${stats.dupes} dupes`);
+  console.log(`  dropped: ${stats.nonGA} non-GA, ${stats.off} off-vertical, ${stats.dupes} dupes; merged ${stats.merged || 0} same-firm rows (reviews added up)`);
   console.log(`  entity:`, byEntity);
   console.log(`  types:`, byType);
   console.log(`  cities: ${Object.keys(byCity).length}`);
