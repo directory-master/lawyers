@@ -4,10 +4,10 @@
 // tracking, the entity filter, "show more" pagination, "near me" → your city,
 // the near-you banner, and the search box. Content is already in the HTML.
 
-import { isSaved, toggleSave, markVisited, counts } from './lib/saved.js?v=0.32.1';
-import { CITY_CENTROIDS } from './data/city-centroids.js?v=0.32.1';
-import { puffFrom } from './lib/confetti.js?v=0.32.1';
-import { track, listingOf, grantConsent } from './lib/analytics.js?v=0.32.1';
+import { isSaved, toggleSave, markVisited, counts } from './lib/saved.js?v=0.34.0';
+import { CITY_CENTROIDS } from './data/city-centroids.js?v=0.34.0';
+import { puffFrom } from './lib/confetti.js?v=0.34.0';
+import { track, listingOf, grantConsent } from './lib/analytics.js?v=0.34.0';
 
 const PIN = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>';
 
@@ -80,8 +80,12 @@ const FILTER_KEY = 'gal.filter';
   const segments = [...document.querySelectorAll('.segment[data-filter]')];
   const moreBtn = list.nextElementSibling && list.nextElementSibling.matches('[data-more-btn]') ? list.nextElementSibling : null;
   const STEP = 20;
+  // Only restore the saved firm/attorney choice when this page actually has the
+  // segmented control. Single-entity boards (/firms/, /attorneys/, …) hide the
+  // control, so a stale saved 'firm' must NOT filter an attorneys-only page down
+  // to nothing (that left those pages looking empty).
   let filter = 'all';
-  try { const f = localStorage.getItem(FILTER_KEY); if (['all', 'firm', 'attorney'].includes(f)) filter = f; } catch { /* */ }
+  if (segments.length) { try { const f = localStorage.getItem(FILTER_KEY); if (['all', 'firm', 'attorney'].includes(f)) filter = f; } catch { /* */ } }
   let shown = STEP;
   let emptyEl = null;
 
@@ -99,7 +103,7 @@ const FILTER_KEY = 'gal.filter';
       card.classList.remove('card--collapsed');            // JS now owns visibility
       if (filter !== 'all' && card.dataset.entity !== filter) { card.style.display = 'none'; setRank(card, null); return; }
       n++;
-      setRank(card, n <= 3 ? n : null);                    // re-rank the filtered group
+      setRank(card, n);                                    // re-rank the filtered group (every card)
       card.style.display = n <= shown ? '' : 'none';       // paginate the filtered group
     });
     if (moreBtn) {
@@ -126,7 +130,7 @@ const FILTER_KEY = 'gal.filter';
 
 // ── browse/directory: per-section sort + "type to filter", remembered ─────────
 // Each section on /directory/ (Practice areas, Cities, Counties, ZIP codes) has
-// a sort toggle (A to Z / Most / Least, by listing count) and a filter box.
+// a sort toggle (A to Z / Top rated / Most / Least) and a filter box.
 // Matching is substring on the chip label; the count is ignored. The sort choice
 // and the filter text are persisted per section so both survive reloads.
 (() => {
@@ -134,7 +138,7 @@ const FILTER_KEY = 'gal.filter';
   if (!sections.length) return;
   const FKEY = (k) => `gal.dir.${k}`;          // filter text
   const SKEY = (k) => `gal.dirsort.${k}`;      // sort mode
-  const SORTS = ['alpha', 'most', 'least'];
+  const SORTS = ['alpha', 'rated', 'most', 'least'];
   sections.forEach((sec) => {
     const key = sec.dataset.filterSection;
     const input = sec.querySelector('[data-filter-input]');
@@ -146,6 +150,7 @@ const FILTER_KEY = 'gal.filter';
       el,
       label: (el.childNodes[0]?.nodeValue || el.textContent).trim().toLowerCase(),
       count: +el.dataset.count || 0,
+      rating: +el.dataset.rating || 0,            // top lawyer's rating for this place
     }));
 
     let sort = 'alpha';
@@ -154,6 +159,7 @@ const FILTER_KEY = 'gal.filter';
     const reorder = () => {
       const cmp = sort === 'most' ? (a, b) => b.count - a.count || a.label.localeCompare(b.label)
         : sort === 'least' ? (a, b) => a.count - b.count || a.label.localeCompare(b.label)
+        : sort === 'rated' ? (a, b) => b.rating - a.rating || b.count - a.count || a.label.localeCompare(b.label)
         : (a, b) => a.label.localeCompare(b.label);
       [...chips].sort(cmp).forEach(({ el }) => wrap.appendChild(el));   // reflow in sorted order
       sortBtns.forEach((b) => { const on = b.dataset.sort === sort; b.classList.toggle('is-active', on); b.setAttribute('aria-pressed', String(on)); });

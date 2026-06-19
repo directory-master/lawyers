@@ -7,11 +7,11 @@
 //   Standard  → + photo, hours, "Verified" eligibility.
 //   Premium   → + pinned to top, "Request a consultation" CTA, social links.
 
-import { h } from '../lib/dom.js?v=0.32.1';
-import { icon } from '../lib/icons.js?v=0.32.1';
-import { isSaved, toggleSave, markVisited } from '../lib/saved.js?v=0.32.1';
-import { puffFrom } from '../lib/confetti.js?v=0.32.1';
-import { initials, telHref, prettyHost, mapsHref, stars, fmtRating, fmtDistance, fmtReviews, parseHours } from '../lib/format.js?v=0.32.1';
+import { h } from '../lib/dom.js?v=0.34.0';
+import { icon } from '../lib/icons.js?v=0.34.0';
+import { isSaved, toggleSave, markVisited } from '../lib/saved.js?v=0.34.0';
+import { puffFrom } from '../lib/confetti.js?v=0.34.0';
+import { initials, telHref, prettyHost, mapsHref, stars, fmtRating, fmtDistance, fmtReviews, parseHours } from '../lib/format.js?v=0.34.0';
 
 const CLAIM_TO = 'artivicolab@gmail.com'; // never rendered as visible text
 
@@ -75,27 +75,22 @@ export function renderCard(l, { rank = null } = {}) {
 }
 
 // Placement slot for the paid rows. Fills with a real listing once a firm buys
-// the spot; until then it shows the offer + price. Honest: we never tag a scraped
+// the spot; until then it shows the offer and sends people to /pricing/ for the
+// rates (prices live on the pricing page only). Honest: we never tag a scraped
 // firm as paying.
 const SLOT = {
-  premium: { tag: 'Premium', price: '$20', blurb: 'Top of the page across your city and practice area, with your photo, hours, and a consultation button.' },
-  standard: { tag: 'Standard', price: '$10', blurb: 'Listed above the free results in your city, with your photo, hours, and website link.' },
+  premium: { tag: 'Premium', blurb: 'Top of the page across your city and practice area, with your photo, hours, and a consultation button.' },
+  standard: { tag: 'Standard', blurb: 'Listed above the free results in your city, with your photo, hours, and website link.' },
 };
 export function promoCard(tier) {
   const s = SLOT[tier];
   return h('article', { class: `card promo promo--${tier}` },
     h('div', { class: 'promo-tag' }, icon('sparkles', { size: 13, fill: true }), s.tag.toUpperCase()),
-    h('div', { class: 'promo-price' }, s.price, h('span', { class: 'promo-per' }, '/mo')),
     h('h3', { class: 'promo-title' }, 'Your practice here'),
     h('p', { class: 'promo-blurb' }, s.blurb),
-    h('button', { class: `btn ${tier === 'premium' ? 'btn--gold' : 'btn--primary'} promo-btn`,
-      onclick: () => openSlot(tier) }, 'Claim this spot'),
+    h('a', { class: `btn ${tier === 'premium' ? 'btn--gold' : 'btn--primary'} promo-btn`,
+      href: '/pricing/' }, 'See pricing'),
   );
-}
-function openSlot(tier) {
-  const s = SLOT[tier];
-  const subj = `${s.tag} listing ($${tier === 'premium' ? '20' : '10'}/mo)`;
-  window.location.href = `mailto:${CLAIM_TO}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(`I'd like the ${s.tag.toLowerCase()} placement (${s.price}/mo).\n\nPractice name:\nCity:\nWebsite:\nBest phone:`)}`;
 }
 
 // Lightweight claim modal → mailto (address never shown as text).

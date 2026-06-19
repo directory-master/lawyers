@@ -224,7 +224,7 @@ function cardHTML(l, rank, extraClass = '', link = true) {
   const reviews = l.reviews ? `<span class="lc-reviews">${nf(l.reviews)} review${l.reviews === 1 ? '' : 's'}${srcFlipHTML(reviewSourceList(l))}</span>` : '';
   const coords = (l.lat != null && l.lng != null) ? ` data-lat="${l.lat}" data-lng="${l.lng}"` : '';
   return `<article class="lc${extraClass ? ' ' + extraClass : ''}" data-listing-id="${attr(l.id)}" data-entity="${l.entity}" data-rating="${l.rating || 0}" data-reviews="${l.reviews || 0}"${coords}>
-  <div class="lc-tabs">${rank != null ? `<span class="lc-tab lc-tab--rank">No. ${rank}</span>` : ''}<span class="lc-tab lc-tab--kind">${kind}</span></div>
+  <div class="lc-tabs">${rank != null ? `<span class="lc-tab lc-tab--rank">No. ${rank}</span>` : ''}<span class="lc-tab lc-tab--kind">${kind}</span>${l.tier === 'premium' || l.tier === 'standard' ? `<span class="lc-tab lc-tab--promoted">Promoted</span>` : ''}</div>
   <div class="lc-card">
     <button class="lc-save" data-save-id="${attr(l.id)}" aria-pressed="false" aria-label="Save ${attr(l.name)}" title="Save">${svg('bookmark', 18)}</button>
     <div class="lc-main">${thumb}
@@ -282,7 +282,7 @@ function segmentedHTML(listings) {
   <button class="segment" data-filter="attorney">Attorneys<span class="segment-count">${g.attorney.length}</span></button>
 </div></div>`;
 }
-const chip = (href, label, count) => `<a class="chip" href="${attr(href)}"${count != null ? ` data-count="${count}"` : ''}>${esc(label)}${count != null ? `<span class="chip-count">${nf(count)}</span>` : ''}</a>`;
+const chip = (href, label, count, rating = null, title = null) => `<a class="chip" href="${attr(href)}"${count != null ? ` data-count="${count}"` : ''}${rating != null ? ` data-rating="${rating}"` : ''}${title ? ` title="${attr(title)}"` : ''}>${esc(label)}${rating != null ? `<span class="chip-rate"><span class="chip-star">★</span>${rating.toFixed(1)}</span>` : ''}${count != null ? `<span class="chip-count">${nf(count)}</span>` : ''}</a>`;
 const chips = (arr, cls = '') => arr.length ? `<div class="chips ${cls}">${arr.join('')}</div>` : '';
 const linkSection = (title, arr) => arr.length ? `<div class="section-head"><h2 class="section-title">${esc(title)}</h2></div>${chips(arr, 'chips--wrap')}` : '';
 
@@ -301,7 +301,7 @@ function footerHTML() {
   </div>
   <div class="foot-rule"><span></span><i></i><span></span></div>
   <div class="foot-cols">
-    <div><div class="foot-h">Find counsel</div><nav class="foot-links"><a href="/area/personal-injury/">By practice area</a><a href="/directory/">By city</a><a href="/">The Georgia Docket</a><a href="/directory/#counties">By county</a></nav></div>
+    <div><div class="foot-h">Find counsel</div><nav class="foot-links"><a href="/area/personal-injury/">By practice area</a><a href="/directory/">By city</a><a href="/firms/">Top law firms</a><a href="/attorneys/">Top attorneys</a><a href="/rankings/">How we rank</a></nav></div>
     <div><div class="foot-h">For attorneys</div><nav class="foot-links"><a href="/pricing/">Pricing</a><a href="${m('Claim free listing')}">Claim your profile</a><a href="${m('Premium placement')}">Premium placement</a></nav></div>
     <div><div class="foot-h">Practice areas</div><nav class="foot-links">${areaLinks}</nav></div>
     <div><div class="foot-h">The directory</div><nav class="foot-links"><a href="https://artivicolab.com" target="_blank" rel="noopener">About Artivicolab</a><a href="${m(SITE)}">Contact us</a><a href="/privacy/">Privacy</a><a href="/terms/">Terms</a></nav></div>
@@ -434,10 +434,11 @@ const itemListLd = (listings, pageUrl) => ({
 const crumbLd = (crumbs) => ({ '@type': 'BreadcrumbList', itemListElement: crumbs.map((c, i) => ({ '@type': 'ListItem', position: i + 1, name: c.name, item: ORIGIN + c.href })) });
 
 // ─── listing page ──────────────────────────────────────────────────────────────
-function listingPage({ urlPath, title, desc, h1, sub, eyebrow, intro, breadcrumbs, listings, sections = [], faq = [], index = true, priority = 0.5, geo = null, notice = '', nearby = null }) {
+function listingPage({ urlPath, title, desc, h1, sub, eyebrow, intro, breadcrumbs, listings, sections = [], faq = [], index = true, priority = 0.5, geo = null, notice = '', nearby = null, listTitle = null, controls = true, cap = null }) {
   const canonical = ORIGIN + '/' + urlPath.replace(/\/?$/, '/');
   const ranked = top(listings, 10);            // top 10 still feeds the ItemList structured data
-  const all = [...listings].sort(byRank);      // one ranked list for the page (no "Top 10" split)
+  const sorted = [...listings].sort(byRank);   // one ranked list for the page (no "Top 10" split)
+  const all = cap ? sorted.slice(0, cap) : sorted;   // cap big leaderboards (full list lives on the city/area pages)
   const SHOW = 20;                             // visible before "show more"; the rest stay crawlable
   const g = groupEntity(listings);
   // The descriptive intro now lives in the page header (see pageShell); the
@@ -451,10 +452,12 @@ function listingPage({ urlPath, title, desc, h1, sub, eyebrow, intro, breadcrumb
 </div>
 ${notice}
 ${promoSlots()}
-${listings.length > 1 ? segmentedHTML(listings) : ''}
-<div class="section-head"><h2 class="section-title">${esc(h1)}</h2></div>
-<div class="card-list" data-more-list>${all.map((l, i) => cardHTML(l, i < 3 ? i + 1 : null, i >= SHOW ? 'card--collapsed' : '')).join('\n')}</div>
+${controls && listings.length > 1 ? segmentedHTML(listings) : ''}
+<div class="section-head"><h2 class="section-title">${esc(listTitle || `Top ${nf(listings.length)} ${h1}`)}</h2></div>
+<p class="rank-note">Ranked by rating and review volume from public sources. Paid placements are marked Promoted. <a href="/rankings/">How we rank</a></p>
+<div class="card-list" data-more-list>${all.map((l, i) => cardHTML(l, i + 1, i >= SHOW ? 'card--collapsed' : '')).join('\n')}</div>
 ${all.length > SHOW ? `<button class="more-btn" data-more-btn>Show ${Math.min(20, all.length - SHOW)} more lawyers</button>` : ''}
+${cap && sorted.length > cap ? `<p class="rank-note">Showing the top ${nf(cap)} of ${nf(sorted.length)}. Browse by practice area or city for the full ranked list.</p>` : ''}
 ${nearby && nearby.listings.length ? `<div class="section-head"><h2 class="section-title">More lawyers near ${esc(nearby.name)}</h2><span class="section-tagline">From the closest Georgia cities</span></div>
 <div class="card-list">${nearby.listings.map(l => cardHTML(l, null)).join('\n')}</div>` : ''}
 ${sections.join('\n')}
@@ -579,6 +582,7 @@ for (const z of ZIPS) {
 // ── practice areas ────────────────────────────────────────────────────────────
 for (const a of AREAS) {
   const short = stripArea(a.name), tp = top(a.listings, 1)[0];
+  const nFirm = a.listings.filter(l => l.entity === 'firm').length, nAtt = a.listings.filter(l => l.entity === 'attorney').length;
   const cities = [...new Set(a.listings.map(l => l.city))].map(s => CITIES.find(ci => ci.slug === s)).filter(Boolean)
     .map(ci => ({ ...ci, n: a.listings.filter(l => l.city === ci.slug).length })).sort((x, y) => y.n - x.n).slice(0, 30);
   const faq = [
@@ -594,7 +598,13 @@ for (const a of AREAS) {
     eyebrow: 'Georgia, statewide',
     intro: AREA_LEDE[a.slug] ? AREA_LEDE[a.slug](a) : (`Compare top rated ${a.name.toLowerCase()}s across Georgia. We list ${nf(a.count)} ${a.group.toLowerCase()} practices, both established law firms and solo attorneys, with ratings, reviews, and direct contact.` + (FACTS[a.slug] ? ' ' + FACTS[a.slug] : '')),
     breadcrumbs: [{ name: 'Home', href: '/' }, { name: 'Practice areas', href: '/areas/' }, { name: short, href: `/area/${a.slug}/` }],
-    listings: a.listings, sections: [linkSection(`${short} by city`, cities.map(ci => chip(`/${ci.slug}/${a.slug}/`, ci.name, ci.n)))],
+    listings: a.listings, sections: [
+      linkSection('Rank firms vs attorneys', [
+        nFirm ? chip(`/firms/${a.slug}/`, `Top ${short.toLowerCase()} law firms`, nFirm) : null,
+        nAtt ? chip(`/attorneys/${a.slug}/`, `Top ${short.toLowerCase()} attorneys`, nAtt) : null,
+      ].filter(Boolean)),
+      linkSection(`${short} by city`, cities.map(ci => chip(`/${ci.slug}/${a.slug}/`, ci.name, ci.n))),
+    ],
     faq, priority: 0.8, geo: { placename: 'Georgia', lat: 32.9, lng: -83.6 },
   });
 }
@@ -606,6 +616,26 @@ for (const a of AREAS) {
 // they stay crawlable and pass link equity to the city/area pages without
 // flooding the index with 5,000+ near-duplicate thin pages. Only PAID listings
 // are indexed standalone.
+// Precompute each listing's rank within its city×area peer group and within its
+// practice area statewide, so a profile can state "Ranked No. 3 of 42 …". Built
+// once (not per profile) from the same byRank order the list pages use, so the
+// badge always matches the position on the list it links to.
+const RANKS = (() => {
+  const m = new Map();
+  for (const a of AREAS) {
+    [...a.listings].sort(byRank).forEach((l, i) => { const e = m.get(l.id) || {}; e.aRank = i + 1; e.aTotal = a.listings.length; m.set(l.id, e); });
+  }
+  for (const c of CITIES) {
+    const groups = {};
+    for (const l of c.listings) (groups[l.typeSlug] ||= []).push(l);
+    for (const slug in groups) {
+      const sorted = groups[slug].sort(byRank);
+      sorted.forEach((l, i) => { const e = m.get(l.id) || {}; e.caRank = i + 1; e.caTotal = sorted.length; m.set(l.id, e); });
+    }
+  }
+  return m;
+})();
+
 function listingProfilePage(l) {
   const area = AREAS.find(a => a.slug === l.typeSlug);
   const short = area ? stripArea(area.name) : l.type;
@@ -658,7 +688,17 @@ function listingProfilePage(l) {
   // placement; flip the default back once the domain has authority.
   const index = l.tier === 'standard' || l.tier === 'premium';
   const metaDesc = clamp(lede, 158);
+  // Ranked position badge: prefer the city×area board (most specific), fall back
+  // to the statewide practice-area board. Links to the list it is ranked within.
+  const r = RANKS.get(l.id) || {};
+  const board = area && r.caTotal >= 2 ? { rank: r.caRank, total: r.caTotal, place: `${l.cityName}, GA`, href: `/${l.city}/${l.typeSlug}/` }
+    : area && r.aTotal >= 2 ? { rank: r.aRank, total: r.aTotal, place: 'Georgia', href: `/area/${l.typeSlug}/` }
+    : null;
+  const badgeHTML = board
+    ? `<a class="rank-badge" href="${attr(board.href)}">${svg('sparkles', 16, true)}<span>Ranked <b>No. ${board.rank}</b> of ${nf(board.total)} ${esc(short.toLowerCase())} ${l.entity === 'firm' ? 'firms' : 'lawyers'} in ${esc(board.place)}</span></a>`
+    : '';
   const body = `
+${badgeHTML}
 ${cardHTML(l, null, 'lc--solo', false)}
 <section class="profile-about"><div class="section-head"><h2 class="section-title">About ${esc(l.name)}</h2></div><p class="area-intro">${esc(about)}</p></section>
 ${sections.join('\n')}
@@ -690,6 +730,61 @@ ${promoSlots()}
 }
 for (const l of LAWYERS) listingProfilePage(l);
 
+// ── firm vs attorney leaderboards (/firms/, /attorneys/, + per area) ──────────
+// Dedicated ranked boards for each entity, since "best law firms" and "top
+// attorneys" are distinct searches. Statewide board + one per practice area
+// (gated to MIN_INDEX so we don't emit thin boards). The entity segmented filter
+// is hidden here (the page IS one entity).
+const ENTITIES = [
+  { key: 'firm', path: 'firms', noun: 'Law Firms', nounLc: 'law firms', one: 'law firm' },
+  { key: 'attorney', path: 'attorneys', noun: 'Attorneys', nounLc: 'attorneys', one: 'attorney' },
+];
+for (const e of ENTITIES) {
+  const all = LAWYERS.filter(l => l.entity === e.key);
+  if (!all.length) continue;
+  const other = e.key === 'firm' ? { path: 'attorneys', noun: 'attorneys' } : { path: 'firms', noun: 'law firms' };
+  const eAreas = AREAS.map(a => ({ a, list: all.filter(l => l.typeSlug === a.slug) })).filter(x => x.list.length);
+  const tp = top(all, 1)[0];
+  const faq = [
+    { q: `How many ${e.nounLc} are listed in Georgia?`, a: `${SITE} ranks ${nf(all.length)} ${e.nounLc} across Georgia by rating and review volume from public sources.` },
+    tp && tp.rating ? { q: `What is a top rated ${e.one} in Georgia?`, a: `${tp.name} in ${tp.cityName} is among the highest rated ${e.nounLc}, with ${tp.rating.toFixed(1)} stars${tp.reviews ? ` across ${nf(tp.reviews)} reviews` : ''}.` } : null,
+    { q: `How are these ${e.nounLc} ranked?`, a: `By average rating and number of reviews from public sources, with paid placements marked Promoted. See How we rank for the full method.` },
+  ].filter(Boolean);
+  listingPage({
+    urlPath: e.path,
+    title: `Best ${e.noun} in Georgia (${YEAR}) | ${SITE}`,
+    desc: `Compare the best ${e.nounLc} in Georgia, ranked by rating and review volume. ${nf(all.length)} ${e.nounLc} with ratings, reviews, and direct contact. Updated ${YEAR}.`,
+    h1: `Top ${e.noun} in Georgia`, sub: `${nf(all.length)} ${e.nounLc} statewide`, eyebrow: 'Georgia, statewide',
+    intro: `Find and compare the best ${e.nounLc} in Georgia, ranked by rating and review volume from public sources. We list ${nf(all.length)} ${e.nounLc} statewide, each with ratings, reviews, and one tap to call. Looking for ${other.noun} instead? See the ${other.noun} board.`,
+    breadcrumbs: [{ name: 'Home', href: '/' }, { name: `Top ${e.noun}`, href: `/${e.path}/` }],
+    listings: all, controls: false, cap: 100, listTitle: `Top ${Math.min(100, all.length)} ${e.noun} in Georgia`,
+    sections: [
+      linkSection(`${e.noun} by practice area`, eAreas.map(({ a, list }) => chip(`/${e.path}/${a.slug}/`, stripArea(a.name), list.length))),
+      linkSection('Other leaderboards', [chip(`/${other.path}/`, `Top ${other.noun}`, LAWYERS.filter(l => l.entity !== e.key).length), chip('/rankings/', 'How we rank')]),
+    ],
+    faq, priority: 0.8, geo: { placename: 'Georgia', lat: 32.9, lng: -83.6 },
+  });
+  for (const { a, list } of eAreas) {
+    const short = stripArea(a.name);
+    const otherN = LAWYERS.filter(l => l.entity !== e.key && l.typeSlug === a.slug).length;
+    listingPage({
+      urlPath: `${e.path}/${a.slug}`,
+      title: `Best ${short} ${e.noun} in Georgia (${YEAR}) | ${SITE}`,
+      desc: `Compare the best ${short.toLowerCase()} ${e.nounLc} in Georgia, ranked by rating and reviews. ${nf(list.length)} ${e.nounLc} with direct contact. Updated ${YEAR}.`,
+      h1: `Top ${short} ${e.noun} in Georgia`, sub: `${nf(list.length)} ${e.nounLc}`, eyebrow: 'Georgia, statewide',
+      intro: `Find and compare the best ${short.toLowerCase()} ${e.nounLc} in Georgia, ranked by rating and review volume. We list ${nf(list.length)} ${short.toLowerCase()} ${e.nounLc} statewide.` + (FACTS[a.slug] ? ' ' + FACTS[a.slug] : ''),
+      breadcrumbs: [{ name: 'Home', href: '/' }, { name: `Top ${e.noun}`, href: `/${e.path}/` }, { name: short, href: `/${e.path}/${a.slug}/` }],
+      listings: list, controls: false, cap: 100, listTitle: `Top ${Math.min(100, list.length)} ${short} ${e.noun} in Georgia`,
+      sections: [linkSection('Related', [
+        chip(`/area/${a.slug}/`, `All ${short} lawyers`, a.count),
+        otherN ? chip(`/${other.path}/${a.slug}/`, `${short} ${other.noun}`, otherN) : null,
+        chip(`/${e.path}/`, `All ${e.noun}`, all.length),
+      ].filter(Boolean))],
+      faq: [], index: list.length >= MIN_INDEX, priority: 0.6, geo: { placename: 'Georgia', lat: 32.9, lng: -83.6 },
+    });
+  }
+}
+
 // ── directory hub ─────────────────────────────────────────────────────────────
 // A "type to filter" box per section, enhanced + persisted (localStorage) by
 // static.js. The chips ARE the indexable content; the input only hides/shows
@@ -700,20 +795,33 @@ function filterSection(key, title, noun, arr) {
   const sortBtn = (s, label, on) => `<button class="dir-sort-btn${on ? ' is-active' : ''}" type="button" data-sort="${s}" aria-pressed="${on ? 'true' : 'false'}">${label}</button>`;
   return `<section class="dir-section" id="${key}" data-filter-section="${key}">
   <div class="section-head"><h2 class="section-title">${esc(title)}</h2>
-    <div class="dir-sort" role="group" aria-label="Sort ${esc(title)}">${sortBtn('alpha', 'A to Z', true)}${sortBtn('most', 'Most')}${sortBtn('least', 'Least')}</div>
+    <div class="dir-sort" role="group" aria-label="Sort ${esc(title)}">${sortBtn('alpha', 'A to Z', true)}${sortBtn('rated', 'Top rated')}${sortBtn('most', 'Most')}${sortBtn('least', 'Least')}</div>
   </div>
   <div class="dir-filter">${svg('search', 16)}<input class="dir-filter-input" type="search" enterkeyhint="search" placeholder="Filter ${esc(noun)}…" aria-label="Filter ${esc(title)}" data-filter-input></div>
   <div class="chips chips--wrap" data-filter-chips>${arr.join('')}</div>
   <p class="dir-empty" data-filter-empty hidden>No ${esc(noun)} match that filter.</p>
 </section>`;
 }
+// A place's headline number for the browse chips: its highest ranked lawyer's
+// star rating, plus that lawyer's name as a tooltip. Powers the "Top rated" sort.
+const placeChip = (href, label, list) => {
+  const t = top(list, 1)[0];
+  const rating = t && t.rating ? t.rating : null;
+  const tip = t ? `Top ${label}: ${t.name}${t.rating ? ` (${t.rating.toFixed(1)}★)` : ''}` : null;
+  return chip(href, label, list.length, rating, tip);
+};
 (function directoryPage() {
   const canonical = ORIGIN + '/directory/';
-  const body = `
-${filterSection('areas', 'Practice areas', 'practice areas', AREAS.map(a => chip(`/area/${a.slug}/`, stripArea(a.name), a.count)))}
-${filterSection('cities', `Cities (${nf(CITIES.length)})`, 'cities', [...CITIES].sort((a, b) => a.name.localeCompare(b.name)).map(c => chip(`/${c.slug}/`, c.name, c.count)))}
-${filterSection('counties', `Counties (${nf(COUNTIES.length)})`, 'counties', [...COUNTIES].sort((a, b) => a.name.localeCompare(b.name)).map(c => chip(`/county/${c.slug}/`, `${c.name} County`, c.count)))}
-${filterSection('zips', `ZIP codes (${nf(ZIPS.length)})`, 'ZIP codes', [...ZIPS].sort((a, b) => a.slug.localeCompare(b.slug)).map(z => chip(`/zip/${z.slug}/`, z.slug, z.count)))}`;
+  const boards = linkSection('Leaderboards', [
+    chip('/firms/', 'Top law firms', LAWYERS.filter(l => l.entity === 'firm').length),
+    chip('/attorneys/', 'Top attorneys', LAWYERS.filter(l => l.entity === 'attorney').length),
+    chip('/rankings/', 'How we rank'),
+  ]);
+  const body = `${boards}
+${filterSection('areas', 'Practice areas', 'practice areas', AREAS.map(a => placeChip(`/area/${a.slug}/`, stripArea(a.name), a.listings)))}
+${filterSection('cities', `Cities (${nf(CITIES.length)})`, 'cities', [...CITIES].sort((a, b) => a.name.localeCompare(b.name)).map(c => placeChip(`/${c.slug}/`, c.name, c.listings)))}
+${filterSection('counties', `Counties (${nf(COUNTIES.length)})`, 'counties', [...COUNTIES].sort((a, b) => a.name.localeCompare(b.name)).map(c => placeChip(`/county/${c.slug}/`, `${c.name} County`, c.listings)))}
+${filterSection('zips', `ZIP codes (${nf(ZIPS.length)})`, 'ZIP codes', [...ZIPS].sort((a, b) => a.slug.localeCompare(b.slug)).map(z => placeChip(`/zip/${z.slug}/`, z.slug, z.listings)))}`;
   const jsonld = { '@context': 'https://schema.org', '@graph': [{ '@type': 'CollectionPage', name: `Directory | ${SITE}`, url: canonical }, crumbLd([{ name: 'Home', href: '/' }, { name: 'Directory', href: '/directory/' }])] };
   out('directory', pageShell({ title: `Browse Georgia Lawyers by City, County and ZIP | ${SITE}`, desc: `Browse every Georgia city, county, ZIP code, and practice area in the directory. ${nf(LAWYERS.length)} law firms and attorneys across ${nf(CITIES.length)} cities and ${nf(COUNTIES.length)} counties.`, canonical, h1: 'Browse the directory', sub: `${nf(LAWYERS.length)} lawyers across ${nf(CITIES.length)} cities`, eyebrow: 'Georgia', breadcrumbs: [{ name: 'Home', href: '/' }, { name: 'Directory', href: '/directory/' }], jsonld, body }), { index: true, priority: 0.9 });
 })();
@@ -768,7 +876,7 @@ function lawyerCtaHTML() {
 const HOME_FAQ = [
   { q: 'Is this directory free to use?', a: 'Yes. Browsing, searching, and contacting any lawyer in the Georgia Lawyer Directory is completely free for the public.' },
   { q: 'How are the lawyers ranked?', a: 'Listings are ordered by rating and review volume from public sources, with paid placements clearly marked. We are an independent directory and do not vet or endorse any lawyer.' },
-  { q: 'How do I get my law firm listed?', a: 'Email us to claim your free listing or buy a Standard ($10/mo) or Premium ($20/mo) placement that pins your firm above the free results in your city.' },
+  { q: 'How do I get my law firm listed?', a: 'Claim your free listing, or take a Standard or Premium placement that pins your firm above the free results in your city. See the pricing page for current placement options and rates.' },
   { q: 'Are these lawyers vetted or recommended?', a: 'No. This is a directory, not a referral service. Listings come from public sources and do not constitute an endorsement, and nothing here is legal advice.' },
 ];
 function homeFaqHTML() {
@@ -899,6 +1007,26 @@ function infoPage({ urlPath, title, desc, h1, eyebrow, body }) {
 }
 const mailtoC = (s) => `mailto:${CONTACT}?subject=${encodeURIComponent(s)}`;
 infoPage({
+  urlPath: 'rankings', eyebrow: 'Methodology', h1: 'How we rank',
+  title: `How We Rank Georgia Lawyers and Law Firms | ${SITE}`,
+  desc: `How ${SITE} orders its Top lists. Rankings reflect public ratings and review volume, with paid placements clearly marked. We do not vet or endorse any lawyer.`,
+  body: `<p class="area-intro">${SITE} ranks ${nf(LAWYERS.length)} lawyers and law firms across Georgia so you can compare the strongest options first. Every Top list on this site is ordered the same way, using public signals, never our opinion. We are an independent directory, not a referral or vetting service, and a high rank is not an endorsement.</p>
+<div class="legal">
+<h2>What decides the order</h2>
+<p>Each listing earns a score from two public signals: its <b>average star rating</b> and the <b>number of reviews</b> behind that rating. We weight the two together so that a lawyer with 4.9 stars from 200 reviews ranks above one with a perfect 5.0 from a single review, because a larger number of reviews gives more confidence that the rating is real. Listings with no reviews yet are shown as New and fall below rated practices.</p>
+<h2>Where the data comes from</h2>
+<p>Ratings, reviews, addresses, and contact details are aggregated from public sources such as review sites and Bing Maps. Numbers can be incomplete or out of date, so confirm details directly with the lawyer before you rely on them.</p>
+<h2>Paid placement, clearly marked</h2>
+<p>Attorneys can buy a Standard or Premium placement that pins their listing above the free results in their city and practice area. Paid listings always carry a <b>Promoted</b> label so you can tell them apart. Paid placement changes where a listing appears, it never changes a listing's rating or review count, and a rating can never be bought.</p>
+<h2>Firms and attorneys</h2>
+<p>Every listing is tagged as a <b>law firm</b> or an <b>individual attorney</b>, so you can rank either group on its own. See the <a href="/firms/">top law firms in Georgia</a> and the <a href="/attorneys/">top attorneys in Georgia</a>, or filter any city or practice area page by firm or attorney.</p>
+<h2>Not legal advice, not an endorsement</h2>
+<p>This is a directory. A ranking reflects public ratings and review volume, not our judgment of any lawyer's skill, and nothing here is legal advice. Contacting a lawyer through this site does not create an attorney client relationship.</p>
+<h2>Are you a lawyer?</h2>
+<p>More genuine client reviews are the surest way to climb the rankings. <a href="${mailtoC('Claim free listing')}">Claim your free listing</a> to keep your details current, or see <a href="/pricing/">placement options</a>.</p>
+</div>`,
+});
+infoPage({
   urlPath: 'pricing', eyebrow: 'For attorneys', h1: 'Pricing',
   title: `Pricing for Attorneys | ${SITE}`,
   desc: `Free for the public. Attorneys can claim a free listing or take a Standard ($10/mo) or Premium ($20/mo) placement above the free results.`,
@@ -974,7 +1102,7 @@ self.addEventListener('fetch', (e) => {
 
 // ── prune orphaned page folders (generator writes; this removes the stale) ────
 const RESERVED = new Set(['css', 'js', 'data', 'scripts', 'assets', 'node_modules', '.git', '.github', '.vscode']);
-const HUBS = new Set(['county', 'zip', 'area', 'lawyer', 'directory']);
+const HUBS = new Set(['county', 'zip', 'area', 'lawyer', 'firms', 'attorneys', 'directory']);
 let pruned = 0;
 for (const e of readdirSync(ROOT, { withFileTypes: true })) {
   if (!e.isDirectory() || RESERVED.has(e.name)) continue;
