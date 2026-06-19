@@ -282,7 +282,7 @@ function segmentedHTML(listings) {
   <button class="segment" data-filter="attorney">Attorneys<span class="segment-count">${g.attorney.length}</span></button>
 </div></div>`;
 }
-const chip = (href, label, count) => `<a class="chip" href="${attr(href)}">${esc(label)}${count != null ? `<span class="chip-count">${nf(count)}</span>` : ''}</a>`;
+const chip = (href, label, count) => `<a class="chip" href="${attr(href)}"${count != null ? ` data-count="${count}"` : ''}>${esc(label)}${count != null ? `<span class="chip-count">${nf(count)}</span>` : ''}</a>`;
 const chips = (arr, cls = '') => arr.length ? `<div class="chips ${cls}">${arr.join('')}</div>` : '';
 const linkSection = (title, arr) => arr.length ? `<div class="section-head"><h2 class="section-title">${esc(title)}</h2></div>${chips(arr, 'chips--wrap')}` : '';
 
@@ -691,13 +691,29 @@ ${promoSlots()}
 for (const l of LAWYERS) listingProfilePage(l);
 
 // ── directory hub ─────────────────────────────────────────────────────────────
+// A "type to filter" box per section, enhanced + persisted (localStorage) by
+// static.js. The chips ARE the indexable content; the input only hides/shows
+// them client side, so the page stays fully crawlable with JS off. The section
+// id doubles as the #anchor the footer links to (#cities / #counties / #zips).
+function filterSection(key, title, noun, arr) {
+  if (!arr.length) return '';
+  const sortBtn = (s, label, on) => `<button class="dir-sort-btn${on ? ' is-active' : ''}" type="button" data-sort="${s}" aria-pressed="${on ? 'true' : 'false'}">${label}</button>`;
+  return `<section class="dir-section" id="${key}" data-filter-section="${key}">
+  <div class="section-head"><h2 class="section-title">${esc(title)}</h2>
+    <div class="dir-sort" role="group" aria-label="Sort ${esc(title)}">${sortBtn('alpha', 'A to Z', true)}${sortBtn('most', 'Most')}${sortBtn('least', 'Least')}</div>
+  </div>
+  <div class="dir-filter">${svg('search', 16)}<input class="dir-filter-input" type="search" enterkeyhint="search" placeholder="Filter ${esc(noun)}…" aria-label="Filter ${esc(title)}" data-filter-input></div>
+  <div class="chips chips--wrap" data-filter-chips>${arr.join('')}</div>
+  <p class="dir-empty" data-filter-empty hidden>No ${esc(noun)} match that filter.</p>
+</section>`;
+}
 (function directoryPage() {
   const canonical = ORIGIN + '/directory/';
   const body = `
-${linkSection('Practice areas', AREAS.map(a => chip(`/area/${a.slug}/`, stripArea(a.name), a.count)))}
-<div id="cities"></div>${linkSection(`Cities (${nf(CITIES.length)})`, [...CITIES].sort((a, b) => a.name.localeCompare(b.name)).map(c => chip(`/${c.slug}/`, c.name, c.count)))}
-<div id="counties"></div>${linkSection(`Counties (${nf(COUNTIES.length)})`, [...COUNTIES].sort((a, b) => a.name.localeCompare(b.name)).map(c => chip(`/county/${c.slug}/`, `${c.name} County`, c.count)))}
-<div id="zips"></div>${linkSection(`ZIP codes (${nf(ZIPS.length)})`, [...ZIPS].sort((a, b) => a.slug.localeCompare(b.slug)).map(z => chip(`/zip/${z.slug}/`, z.slug, z.count)))}`;
+${filterSection('areas', 'Practice areas', 'practice areas', AREAS.map(a => chip(`/area/${a.slug}/`, stripArea(a.name), a.count)))}
+${filterSection('cities', `Cities (${nf(CITIES.length)})`, 'cities', [...CITIES].sort((a, b) => a.name.localeCompare(b.name)).map(c => chip(`/${c.slug}/`, c.name, c.count)))}
+${filterSection('counties', `Counties (${nf(COUNTIES.length)})`, 'counties', [...COUNTIES].sort((a, b) => a.name.localeCompare(b.name)).map(c => chip(`/county/${c.slug}/`, `${c.name} County`, c.count)))}
+${filterSection('zips', `ZIP codes (${nf(ZIPS.length)})`, 'ZIP codes', [...ZIPS].sort((a, b) => a.slug.localeCompare(b.slug)).map(z => chip(`/zip/${z.slug}/`, z.slug, z.count)))}`;
   const jsonld = { '@context': 'https://schema.org', '@graph': [{ '@type': 'CollectionPage', name: `Directory | ${SITE}`, url: canonical }, crumbLd([{ name: 'Home', href: '/' }, { name: 'Directory', href: '/directory/' }])] };
   out('directory', pageShell({ title: `Browse Georgia Lawyers by City, County and ZIP | ${SITE}`, desc: `Browse every Georgia city, county, ZIP code, and practice area in the directory. ${nf(LAWYERS.length)} law firms and attorneys across ${nf(CITIES.length)} cities and ${nf(COUNTIES.length)} counties.`, canonical, h1: 'Browse the directory', sub: `${nf(LAWYERS.length)} lawyers across ${nf(CITIES.length)} cities`, eyebrow: 'Georgia', breadcrumbs: [{ name: 'Home', href: '/' }, { name: 'Directory', href: '/directory/' }], jsonld, body }), { index: true, priority: 0.9 });
 })();
