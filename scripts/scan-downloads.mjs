@@ -17,7 +17,7 @@ const MIN_ROWS = 8;       // ignore tiny files
 const MIN_SHARE = 0.6;    // ≥60% law rows → a lawyer scrape
 
 const files = readdirSync(DOWNLOADS)
-  .filter(f => /^Bing_Maps_Scraper_.*\.csv$/i.test(f)).sort();
+  .filter(f => /^(Bing_Maps_Scraper_|Maps-Scraper-net_).*\.csv$/i.test(f)).sort();
 
 const lawyerFiles = [];
 const report = [];

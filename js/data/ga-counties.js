@@ -176,6 +176,7 @@ export const CITY_COUNTY = {
   suwanee: 'Gwinnett',
   sylvester: 'Worth',
   temple: 'Carroll',
+  'thomas-crossroads': 'Coweta',
   thomaston: 'Upson',
   thomasville: 'Thomas',
   tifton: 'Tift',
