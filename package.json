@@ -1,6 +1,6 @@
 {
   "name": "ga-lawyers",
-  "version": "0.35.16",
+  "version": "0.35.17",
   "private": true,
   "description": "Georgia Lawyer Directory — zero-backend, SEO-first static directory of lawyers & law firms across Georgia.",
   "type": "module",
@@ -8,9 +8,8 @@
     "import": "node scripts/import-csv.mjs",
     "import:google": "node scripts/import-google.mjs",
     "scan": "node scripts/scan-downloads.mjs",
-    "stamp": "node scripts/version-stamp.mjs",
     "build:pages": "node scripts/generate-pages.mjs",
-    "build": "npm run stamp && npm run build:pages",
+    "build": "npm run build:pages",
     "serve": "python3 -m http.server 8000",
     "dev": "npm run build && npm run serve"
   },

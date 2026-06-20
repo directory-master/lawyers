@@ -420,7 +420,7 @@ ${HEAD_SOCIAL}
 <meta name="twitter:card" content="summary_large_image">
 ${PRECONNECT}
 ${HEAD_PWA}
-<link rel="stylesheet" href="/css/style.css?v=${V}">
+<link rel="stylesheet" href="/css/style.css">
 <script type="application/ld+json">${JSON.stringify(jsonld)}</script>
 </head>
 <body class="static">
@@ -440,7 +440,7 @@ ${body}
 </main>
 ${footerHTML()}
 ${tabBarHTML(tab)}
-<script type="module" src="/js/static.js?v=${V}"></script>
+<script type="module" src="/js/static.js"></script>
 </body>
 </html>`;
 }
@@ -861,7 +861,7 @@ ${HEAD_SOCIAL}
 <meta name="twitter:card" content="summary_large_image">
 ${PRECONNECT}
 ${HEAD_PWA}
-<link rel="stylesheet" href="/css/style.css?v=${V}">
+<link rel="stylesheet" href="/css/style.css">
 <script type="application/ld+json">${JSON.stringify(ld)}</script>
 </head>
 <body>
@@ -870,7 +870,7 @@ ${NOSCRIPT}
 <main class="view view--home" id="main">${homeBody}</main>
 ${footerHTML()}
 ${tabBarHTML('home')}
-<script type="module" src="/js/static.js?v=${V}"></script>
+<script type="module" src="/js/static.js"></script>
 </body>
 </html>`;
   writeFileSync(join(ROOT, 'index.html'), html);
@@ -888,8 +888,8 @@ function appShell({ urlPath, title, desc, h1, eyebrow, mode, index = false }) {
 ${qaBarHTML()}
 <main class="view static-wrap" id="main">${searchUi}<div id="collection" data-mode="${mode}"></div></main>
 ${footerHTML()}${tabBarHTML(mode === 'near' ? 'near' : 'browse')}
-<script type="module" src="/js/static.js?v=${V}"></script>
-<script type="module" src="/js/collections.js?v=${V}"></script>`;
+<script type="module" src="/js/static.js"></script>
+<script type="module" src="/js/collections.js"></script>`;
   const html = `<!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8">${GTAG}
@@ -899,7 +899,7 @@ ${footerHTML()}${tabBarHTML(mode === 'near' ? 'near' : 'browse')}
 <link rel="canonical" href="${canonical}"><meta name="theme-color" content="#1a1a1f">
 <meta property="og:title" content="${attr(title)}"><meta property="og:description" content="${attr(desc)}">${HEAD_SOCIAL}<meta name="twitter:card" content="summary_large_image">
 ${PRECONNECT}
-${HEAD_PWA}<link rel="stylesheet" href="/css/style.css?v=${V}">
+${HEAD_PWA}<link rel="stylesheet" href="/css/style.css">
 </head><body class="static">${SKIP}
 ${NOSCRIPT}
 ${body}
@@ -988,7 +988,7 @@ infoPage({
 });
 
 // ── 404 ────────────────────────────────────────────────────────────────────────
-writeFileSync(join(ROOT, '404.html'), `<!doctype html><html lang="en"><head><meta charset="utf-8">${GTAG}<meta name="viewport" content="width=device-width, initial-scale=1"><title>Page not found | ${SITE}</title><meta name="robots" content="noindex"><link rel="stylesheet" href="/css/style.css?v=${V}"></head><body class="static">${NOSCRIPT}${headerHTML()}<main class="view static-wrap"><h1 class="static-h1">Page not found</h1><p class="static-sub">That page doesn’t exist. Browse the directory instead.</p><p><a class="btn btn--primary" href="/directory/">Browse all Georgia lawyers</a></p></main>${footerHTML()}</body></html>`);
+writeFileSync(join(ROOT, '404.html'), `<!doctype html><html lang="en"><head><meta charset="utf-8">${GTAG}<meta name="viewport" content="width=device-width, initial-scale=1"><title>Page not found | ${SITE}</title><meta name="robots" content="noindex"><link rel="stylesheet" href="/css/style.css"></head><body class="static">${NOSCRIPT}${headerHTML()}<main class="view static-wrap"><h1 class="static-h1">Page not found</h1><p class="static-sub">That page doesn’t exist. Browse the directory instead.</p><p><a class="btn btn--primary" href="/directory/">Browse all Georgia lawyers</a></p></main>${footerHTML()}</body></html>`);
 
 // ── sitemap + robots ───────────────────────────────────────────────────────────
 sitemap.unshift({ loc: ORIGIN + '/', priority: 1.0 });

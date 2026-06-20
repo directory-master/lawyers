@@ -4,10 +4,10 @@
 // tracking, the entity filter, "show more" pagination, "near me" → your city,
 // the near-you banner, and the search box. Content is already in the HTML.
 
-import { isSaved, toggleSave, markVisited, counts } from './lib/saved.js?v=0.35.16';
-import { CITY_CENTROIDS } from './data/city-centroids.js?v=0.35.16';
-import { puffFrom } from './lib/confetti.js?v=0.35.16';
-import { track, listingOf, grantConsent } from './lib/analytics.js?v=0.35.16';
+import { isSaved, toggleSave, markVisited, counts } from './lib/saved.js';
+import { CITY_CENTROIDS } from './data/city-centroids.js';
+import { puffFrom } from './lib/confetti.js';
+import { track, listingOf, grantConsent } from './lib/analytics.js';
 
 const PIN = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>';
 
@@ -484,13 +484,15 @@ function initFlips(root = document) {
     const words = [...el.querySelectorAll('.src-word')];
     if (words.length < 2) return;
     let i = 0;
-    setInterval(() => {
+    const period = 2600 + Math.random() * 2600;          // individual speed, so they don't sync
+    const tick = () => {
       const cur = words[i], next = words[(i + 1) % words.length];
       cur.classList.remove('is-on'); cur.classList.add('is-out');
       setTimeout(() => cur.classList.remove('is-out'), 480);
       next.classList.add('is-on');
       i = (i + 1) % words.length;
-    }, 2200);
+    };
+    setTimeout(() => { tick(); setInterval(tick, period); }, Math.random() * period);  // individual start
   });
 }
 initFlips();

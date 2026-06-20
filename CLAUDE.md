@@ -17,20 +17,20 @@ Sibling project **`~/contractors`** is the same engine for a different vertical 
 consult it for patterns (importer, generator, freemium gate). Most of it ports
 here with only vocabulary changed.
 
-## ⚠️ Versioning + cache-busting — do this every change
+## Versioning + cache-busting
 
-The browser caches CSS and ES modules by URL. Without a changing URL the site
-**flips between old and new design** until a hard refresh. So on EVERY change:
+The browser caches CSS and ES modules by URL. Cache-busting is handled by the
+**service worker** ([sw.js](sw.js)), not by per-page query strings: the generator
+writes `sw.js` with a versioned cache name (`gal-<package.json version>`), and on
+each version bump the SW deletes the old cache and refetches assets fresh (with a
+stale-while-revalidate fallback, and GitHub Pages' ~10-min cache for first-load /
+no-SW visitors).
 
-1. Bump `version` in `package.json` (patch for fixes, minor `0.x → 0.(x+1).0` for
-   features).
-2. Run **`npm run stamp`** — stamps `?v=<version>` on the CSS/JS links in
-   `index.html` AND on every relative `import` across `js/**` (the whole module
-   graph re-fetches, not just the entry file). Idempotent. See
-   [scripts/version-stamp.mjs](scripts/version-stamp.mjs).
-
-Never hand-edit the `?v=…` strings; bump + stamp. Imports therefore look like
-`from '../lib/store.js?v=0.3.0'` — that's expected, the stamper manages it.
+So on a change that touches CSS/JS: **bump `version` in `package.json`**, then
+`npm run build`. That regenerates `sw.js` with the new cache name. Pages and JS
+imports reference plain URLs (no `?v=…`), so a CSS-only change no longer rewrites
+every page — only `css/style.css` + `sw.js` change. (We dropped the old
+`version-stamp` step for exactly that reason.)
 
 ## Stack & constraints
 
@@ -53,15 +53,15 @@ Never hand-edit the `?v=…` strings; bump + stamp. Imports therefore look like
 ```bash
 cd ~/lawyers
 npm run import -- ~/Downloads/Bing_Maps_Scraper_<lawyers>.csv   # refresh data
-npm run build      # bump package.json version FIRST, then: stamp + regenerate static pages
+npm run build      # bump package.json version FIRST, then regenerate static pages (+ sw.js)
 npm run serve      # http://localhost:8000  (static pages live at /marietta/, /county/cobb/, …)
 ```
 
 **The generated files ARE the site.** `index.html` and every `*/index.html` are
 written by the generator; do not hand-edit them (your changes get overwritten).
 Edit the generator/templates or the data instead. After ANY data or design change:
-**bump `version` in package.json → `npm run build`** (stamp + regenerate). The
-generator auto-prunes orphaned page folders each run.
+**bump `version` in package.json → `npm run build`** (regenerates pages + sw.js).
+The generator auto-prunes orphaned page folders each run.
 
 ## Architecture
 
@@ -81,7 +81,7 @@ generator auto-prunes orphaned page folders each run.
 | [data/cities/](data/cities/) | Durable **law-only** per-city JSON store (one file per city). Survives `~/Downloads` cleanup. |
 | [scripts/import-csv.mjs](scripts/import-csv.mjs) | Bing Maps scraper CSV → durable store → `lawyers-imported.js`. |
 | [scripts/generate-pages.mjs](scripts/generate-pages.mjs) | The static SEO generator. Emits crawlable HTML at clean URLs (city/county/zip/area/city×area) + `/directory/` hub + `sitemap.xml`. Mirrors `card.js` markup server-side. |
-| [scripts/version-stamp.mjs](scripts/version-stamp.mjs) | Cache-buster: stamps `?v=<version>` on assets + imports. |
+| [sw.js](sw.js) | **AUTO-GENERATED** service worker; versioned cache name busts CSS/JS on each version bump. |
 | [scripts/scan-downloads.mjs](scripts/scan-downloads.mjs) | Classifies which `~/Downloads` Bing CSVs are lawyer scrapes. |
 | [scripts/gate.mjs](scripts/gate.mjs) | Shared ingest gate (parser + law-row classifier). |
 
