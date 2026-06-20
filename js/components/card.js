@@ -7,11 +7,11 @@
 //   Standard  → + photo, hours, "Verified" eligibility.
 //   Premium   → + pinned to top, "Request a consultation" CTA, social links.
 
-import { h } from '../lib/dom.js?v=0.35.1';
-import { icon } from '../lib/icons.js?v=0.35.1';
-import { isSaved, toggleSave, markVisited } from '../lib/saved.js?v=0.35.1';
-import { puffFrom } from '../lib/confetti.js?v=0.35.1';
-import { initials, telHref, prettyHost, mapsHref, stars, fmtRating, fmtDistance, fmtReviews, parseHours } from '../lib/format.js?v=0.35.1';
+import { h } from '../lib/dom.js?v=0.35.7';
+import { icon } from '../lib/icons.js?v=0.35.7';
+import { isSaved, toggleSave, markVisited } from '../lib/saved.js?v=0.35.7';
+import { puffFrom } from '../lib/confetti.js?v=0.35.7';
+import { initials, telHref, prettyHost, mapsHref, stars, fmtRating, fmtDistance, fmtReviews, parseHours, hiResImage, ringDur } from '../lib/format.js?v=0.35.7';
 
 const CLAIM_TO = 'artivicolab@gmail.com'; // never rendered as visible text
 
@@ -28,47 +28,62 @@ function saveButton(l) {
   }, icon('bookmark', { size: 18 }));
 }
 
-// Framed square thumbnail (photo or initials fallback).
-function thumb(l) {
-  const fallback = () => h('div', { class: 'lc-thumb lc-thumb--initials', 'aria-hidden': 'true' }, initials(l.name));
-  if (!l.image) return fallback();
-  const img = h('img', { src: l.image, alt: l.name, loading: 'lazy', decoding: 'async',
-    onerror: () => { wrap.replaceWith(fallback()); } });
-  const wrap = h('div', { class: 'lc-thumb' }, img);
-  return wrap;
+// Initials panel sits behind every card as the base layer; the upscaled photo
+// overlays it when present, and drops out (revealing the initials) if it fails to
+// load — so a broken photo URL never shows a broken-image glyph.
+function bgInitials(l) {
+  return h('div', { class: 'lc-bg lc-bg--initials', 'aria-hidden': 'true' }, initials(l.name));
+}
+function cardBg(l) {
+  const layers = [bgInitials(l)];
+  if (l.image) {
+    const img = h('img', { class: 'lc-bg lc-bg--photo', src: hiResImage(l.image), alt: l.name,
+      loading: 'lazy', decoding: 'async', onerror: () => img.remove() });
+    layers.push(img);
+  }
+  return layers;
 }
 
-// Editorial "letterhead" card — mirrors scripts/generate-pages.mjs cardHTML.
+// "Bottom glass" photo card with an oxblood letterhead band on top — mirrors
+// scripts/generate-pages.mjs cardHTML. Top five ranks get a distinct frame.
 export function renderCard(l, { rank = null } = {}) {
   const tel = telHref(l.phone);
   const kind = l.entity === 'firm' ? 'LAW FIRM' : 'ATTORNEY';
   const visit = (e) => { e.stopPropagation(); markVisited(l.id); };
+  const cls = 'lc' + (rank != null && rank <= 5 ? ' lc--rank' + rank : '');
   return h('article', {
-    class: 'lc', dataset: { listingId: l.id, entity: l.entity, rating: l.rating || 0, reviews: l.reviews || 0 },
+    class: cls, style: '--ring:' + ringDur(l.id),
+    dataset: { listingId: l.id, entity: l.entity, rating: l.rating || 0, reviews: l.reviews || 0 },
   },
-    h('div', { class: 'lc-tabs' },
-      rank != null && h('span', { class: 'lc-tab lc-tab--rank' }, 'No. ' + rank),
-      h('span', { class: 'lc-tab lc-tab--kind' }, kind)),
     h('div', { class: 'lc-card' },
-      saveButton(l),
-      h('div', { class: 'lc-main' },
-        thumb(l),
-        h('div', { class: 'lc-info' },
-          h('h3', { class: 'lc-name' }, l.name),
+      // outer letterhead band (sits above the photo, never over it)
+      h('div', { class: 'lc-band' },
+        h('div', { class: 'lc-tabs' },
+          rank != null && h('span', { class: 'lc-tab lc-tab--rank' }, 'No. ' + rank),
+          h('span', { class: 'lc-tab lc-tab--kind' }, kind),
+          (l.tier === 'premium' || l.tier === 'standard') && h('span', { class: 'lc-tab lc-tab--promoted' }, 'Promoted')),
+        saveButton(l)),
+      h('div', { class: 'lc-photo' },
+        cardBg(l),
+        h('div', { class: 'lc-scrim' }),
+        h('span', { class: 'lc-wm', 'data-dist': '', 'aria-hidden': 'true' }),
+        h('div', { class: 'lc-body' },
+          l.rating ? h('div', { class: 'lc-seal' },
+            h('span', { class: 'lc-star' }, '★'),
+            h('span', { class: 'lc-seal-n' }, l.rating.toFixed(1))) : null,
+          // title gives long names a native tooltip; CSS clamps to two lines.
+          h('h3', { class: 'lc-name', title: l.name }, l.name),
           h('div', { class: 'lc-sub' }, l.type),
           h('div', { class: 'lc-meta' },
-            l.rating
-              ? h('span', { class: 'lc-rating' }, h('span', { class: 'lc-star' }, '★'), ' ' + l.rating.toFixed(1))
-              : h('span', { class: 'lc-rating lc-rating--new' }, 'New'),
             l.reviews ? h('span', { class: 'lc-reviews' }, `${l.reviews.toLocaleString()} review${l.reviews === 1 ? '' : 's'}`) : null,
           ),
           h('div', { class: 'lc-addr' }, icon('mapPin', { size: 15 }), h('span', {}, l.address || `${l.cityName}, GA`)),
+          h('div', { class: 'lc-actions' },
+            tel && h('a', { class: 'lc-btn lc-btn--call', href: tel, onclick: visit, title: 'Call' }, icon('phone', { size: 16 }), h('span', {}, 'Call')),
+            h('a', { class: 'lc-btn', href: mapsHref(l), target: '_blank', rel: 'noopener', onclick: visit, 'aria-label': 'Directions', title: 'Get directions' }, icon('navigation', { size: 16 }), h('span', {}, 'Directions')),
+            l.website && h('a', { class: 'lc-btn', href: l.website, target: '_blank', rel: 'noopener nofollow', onclick: visit, 'aria-label': 'Website', title: 'Visit website' }, icon('globe', { size: 16 }), h('span', {}, 'Website')),
+          ),
         ),
-      ),
-      h('div', { class: 'lc-actions' },
-        tel && h('a', { class: 'lc-btn lc-btn--call', href: tel, onclick: visit }, icon('phone', { size: 16 }), h('span', {}, 'Call')),
-        h('a', { class: 'lc-btn', href: mapsHref(l), target: '_blank', rel: 'noopener', onclick: visit }, icon('navigation', { size: 16 }), h('span', {}, 'Directions')),
-        l.website && h('a', { class: 'lc-btn', href: l.website, target: '_blank', rel: 'noopener nofollow', onclick: visit }, icon('globe', { size: 16 }), h('span', {}, 'Website')),
       ),
     ),
   );

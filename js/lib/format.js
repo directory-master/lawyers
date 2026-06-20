@@ -6,6 +6,26 @@ export const initials = (name) => (name || '?')
 
 export const telHref = (phone) => phone ? 'tel:' + phone.replace(/[^\d+]/g, '') : null;
 
+// Map photos come back as tiny thumbnails (Google as small as 80px wide); that
+// was fine for a 60px avatar, but our cards use the photo as a full background, so
+// the thumbnails upscale and blur. These hosts honor a larger size token, so ask
+// for one. Bing OLC thumbnails are already 480×360 — leave them alone.
+export function hiResImage(url, px = 720) {
+  if (!url) return url;
+  if (/=w\d+-h\d+/.test(url)) return url.replace(/=w\d+-h\d+/, `=w${px}-h${px}`); // googleusercontent
+  if (url.includes('streetviewpixels-pa.googleapis.com'))                          // street view render
+    return url.replace(/([?&]w=)\d+/, `$1${px}`).replace(/([?&]h=)\d+/, `$1${Math.round(px * 0.75)}`);
+  return url;
+}
+
+// A stable per-listing "ring speed" so every Call icon shakes at its own pace
+// (derived from the id, so server and client agree). Range ~1.2s–2.4s.
+export function ringDur(seed) {
+  const s = String(seed || ''); let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return (1.2 + (h % 120) / 100).toFixed(2) + 's';
+}
+
 export function prettyHost(url) {
   if (!url) return null;
   try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]; }

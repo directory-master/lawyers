@@ -81,6 +81,20 @@ const initials = (name) => (name || '?')
 const stars = (r) => { if (!r) return ''; const f = Math.floor(r), up = r - f >= .75 ? 1 : 0, h = r - f >= .25 && r - f < .75; return '★'.repeat(f + up) + (h ? '⯪' : ''); };
 const telHref = (p) => p ? 'tel:' + p.replace(/[^\d+]/g, '') : null;
 const mapsHref = (l) => l.lat != null ? `https://www.google.com/maps/search/?api=1&query=${l.lat},${l.lng}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.address || l.name)}`;
+// Mirror of js/lib/format.js: upscale tiny map thumbnails so card backgrounds
+// stay crisp, and give each Call icon its own stable shake speed.
+const hiResImage = (url, px = 720) => {
+  if (!url) return url;
+  if (/=w\d+-h\d+/.test(url)) return url.replace(/=w\d+-h\d+/, `=w${px}-h${px}`);
+  if (url.includes('streetviewpixels-pa.googleapis.com'))
+    return url.replace(/([?&]w=)\d+/, `$1${px}`).replace(/([?&]h=)\d+/, `$1${Math.round(px * 0.75)}`);
+  return url;
+};
+const ringDur = (seed) => {
+  const s = String(seed || ''); let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return (1.2 + (h % 120) / 100).toFixed(2) + 's';
+};
 const distanceMi = (a, b) => { if (!a || !b) return Infinity; const R = 3958.8, tr = d => d * Math.PI / 180; const dLat = tr(b.lat - a.lat), dLng = tr(b.lng - a.lng); const x = Math.sin(dLat / 2) ** 2 + Math.cos(tr(a.lat)) * Math.cos(tr(b.lat)) * Math.sin(dLng / 2) ** 2; return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x)); };
 
 // Inline SVG icons (matches js/lib/icons.js) for server-rendered markup.
@@ -217,29 +231,38 @@ function srcFlipHTML(names) {
 function cardHTML(l, rank, extraClass = '', link = true) {
   const tel = telHref(l.phone);
   const kind = l.entity === 'firm' ? 'LAW FIRM' : 'ATTORNEY';
-  const thumb = l.image
-    ? `<div class="lc-thumb"><img src="${attr(l.image)}" alt="${attr(l.name + ', ' + l.type + ' in ' + l.cityName + ', GA')}" loading="lazy" decoding="async"></div>`
-    : `<div class="lc-thumb lc-thumb--initials" aria-hidden="true">${esc(initials(l.name))}</div>`;
-  const ratingPill = l.rating ? `<span class="lc-rating"><span class="lc-star">★</span> ${l.rating.toFixed(1)}</span>` : `<span class="lc-rating lc-rating--new">New</span>`;
+  // Initials sit behind as the base layer; the photo overlays it and removes
+  // itself if it fails to load, so a broken URL never shows a broken-image glyph.
+  const bg = `<div class="lc-bg lc-bg--initials" aria-hidden="true">${esc(initials(l.name))}</div>`
+    + (l.image ? `<img class="lc-bg lc-bg--photo" src="${attr(hiResImage(l.image))}" alt="${attr(l.name + ', ' + l.type + ' in ' + l.cityName + ', GA')}" loading="lazy" decoding="async" onerror="this.remove()">` : '');
+  const seal = l.rating ? `<div class="lc-seal"><span class="lc-star">★</span><span class="lc-seal-n">${l.rating.toFixed(1)}</span></div>` : '';
   const reviews = l.reviews ? `<span class="lc-reviews">${nf(l.reviews)} review${l.reviews === 1 ? '' : 's'}${srcFlipHTML(reviewSourceList(l))}</span>` : '';
   const coords = (l.lat != null && l.lng != null) ? ` data-lat="${l.lat}" data-lng="${l.lng}"` : '';
-  return `<article class="lc${extraClass ? ' ' + extraClass : ''}" data-listing-id="${attr(l.id)}" data-entity="${l.entity}" data-rating="${l.rating || 0}" data-reviews="${l.reviews || 0}"${coords}>
-  <div class="lc-tabs">${rank != null ? `<span class="lc-tab lc-tab--rank">No. ${rank}</span>` : ''}<span class="lc-tab lc-tab--kind">${kind}</span>${l.tier === 'premium' || l.tier === 'standard' ? `<span class="lc-tab lc-tab--promoted">Promoted</span>` : ''}</div>
+  const rankCls = (rank != null && rank <= 5) ? ` lc--rank${rank}` : '';
+  // title gives long names a native tooltip; CSS clamps the name to two lines.
+  const nameInner = link ? `<a class="lc-namelink" href="/lawyer/${attr(l.id)}/">${esc(l.name)}</a>` : esc(l.name);
+  return `<article class="lc${rankCls}${extraClass ? ' ' + extraClass : ''}" style="--ring:${ringDur(l.id)}" data-listing-id="${attr(l.id)}" data-entity="${l.entity}" data-rating="${l.rating || 0}" data-reviews="${l.reviews || 0}"${coords}>
   <div class="lc-card">
-    <button class="lc-save" data-save-id="${attr(l.id)}" aria-pressed="false" aria-label="Save ${attr(l.name)}" title="Save">${svg('bookmark', 18)}</button>
-    <div class="lc-main">${thumb}
-      <div class="lc-info">
-        <h3 class="lc-name">${link ? `<a class="lc-namelink" href="/lawyer/${attr(l.id)}/">${esc(l.name)}</a>` : esc(l.name)}</h3>
-        <div class="lc-sub">${esc(l.type)}</div>
-        <div class="lc-meta">${ratingPill}${reviews}</div>
-        <div class="lc-addr">${svg('mapPin', 15)}<span>${esc(l.address || l.cityName + ', GA')}</span></div>
-      </div>
-      <span class="lc-wm" data-dist aria-hidden="true"></span>
+    <div class="lc-band">
+      <div class="lc-tabs">${rank != null ? `<span class="lc-tab lc-tab--rank">No. ${rank}</span>` : ''}<span class="lc-tab lc-tab--kind">${kind}</span>${l.tier === 'premium' || l.tier === 'standard' ? `<span class="lc-tab lc-tab--promoted">Promoted</span>` : ''}</div>
+      <button class="lc-save" data-save-id="${attr(l.id)}" aria-pressed="false" aria-label="Save ${attr(l.name)}" title="Save">${svg('bookmark', 18)}</button>
     </div>
-    <div class="lc-actions">
-      ${tel ? `<a class="lc-btn lc-btn--call" href="${attr(tel)}" data-visit>${svg('phone', 16)}<span>Call</span></a>` : ''}
-      <a class="lc-btn" href="${attr(mapsHref(l))}" target="_blank" rel="noopener" data-visit>${svg('navigation', 16)}<span>Directions</span></a>
-      ${l.website ? `<a class="lc-btn" href="${attr(l.website)}" target="_blank" rel="noopener nofollow" data-visit>${svg('globe', 16)}<span>Website</span></a>` : ''}
+    <div class="lc-photo">
+      ${bg}
+      <div class="lc-scrim"></div>
+      <span class="lc-wm" data-dist aria-hidden="true"></span>
+      <div class="lc-body">
+        ${seal}
+        <h3 class="lc-name" title="${attr(l.name)}">${nameInner}</h3>
+        <div class="lc-sub">${esc(l.type)}</div>
+        <div class="lc-meta">${reviews}</div>
+        <div class="lc-addr">${svg('mapPin', 15)}<span>${esc(l.address || l.cityName + ', GA')}</span></div>
+        <div class="lc-actions">
+          ${tel ? `<a class="lc-btn lc-btn--call" href="${attr(tel)}" title="Call" data-visit>${svg('phone', 16)}<span>Call</span></a>` : ''}
+          <a class="lc-btn" href="${attr(mapsHref(l))}" target="_blank" rel="noopener" aria-label="Directions" title="Get directions" data-visit>${svg('navigation', 16)}<span>Directions</span></a>
+          ${l.website ? `<a class="lc-btn" href="${attr(l.website)}" target="_blank" rel="noopener nofollow" aria-label="Website" title="Visit website" data-visit>${svg('globe', 16)}<span>Website</span></a>` : ''}
+        </div>
+      </div>
     </div>
   </div>
 </article>`;
@@ -324,7 +347,7 @@ function champActions(l) {
   return `<div class="docket-actions">${tel ? `<a class="docket-btn docket-btn--call" href="${attr(tel)}" data-visit>${svg('phone', 15)}<span>Call</span></a>` : ''}<a class="docket-btn" href="${attr(mapsHref(l))}" target="_blank" rel="noopener" data-visit>${svg('navigation', 15)}<span>Directions</span></a>${l.website ? `<a class="docket-btn" href="${attr(l.website)}" target="_blank" rel="noopener nofollow" data-visit>${svg('globe', 15)}<span>Website</span></a>` : ''}</div>`;
 }
 function champInner(l, rank) {
-  const bg = l.image ? `<img class="docket-champ-bg" src="${attr(l.image)}" alt="" loading="lazy" decoding="async" aria-hidden="true"><div class="docket-champ-scrim" aria-hidden="true"></div>` : '';
+  const bg = l.image ? `<img class="docket-champ-bg" src="${attr(hiResImage(l.image))}" alt="" loading="lazy" decoding="async" aria-hidden="true"><div class="docket-champ-scrim" aria-hidden="true"></div>` : '';
   return `${bg}<button class="docket-champ-save" data-save-id="${attr(l.id)}" aria-pressed="false" aria-label="Save ${attr(l.name)}" title="Save">${svg('bookmark', 18)}</button>
     <div class="docket-champ-body">
     <div class="docket-rank1">— No. ${rank} —</div>
@@ -341,7 +364,7 @@ function docketHTML(list) {
   if (!champ) return '';
   // compact data for the client to rebuild the spotlight on click
   const data = ten.map(l => ({ id: l.id, name: l.name, type: l.type, cityName: l.cityName,
-    rating: l.rating || null, reviews: l.reviews || 0, srcs: reviewSourceList(l), av: avHTML(l), image: l.image || null, tel: telHref(l.phone), maps: mapsHref(l), web: l.website || null,
+    rating: l.rating || null, reviews: l.reviews || 0, srcs: reviewSourceList(l), av: avHTML(l), image: hiResImage(l.image) || null, tel: telHref(l.phone), maps: mapsHref(l), web: l.website || null,
     lat: l.lat ?? null, lng: l.lng ?? null }));
   return `<section class="home-section"><div class="docket" data-docket>
   <span class="docket-corner docket-corner--tl"></span><span class="docket-corner docket-corner--br"></span>

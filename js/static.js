@@ -4,10 +4,10 @@
 // tracking, the entity filter, "show more" pagination, "near me" → your city,
 // the near-you banner, and the search box. Content is already in the HTML.
 
-import { isSaved, toggleSave, markVisited, counts } from './lib/saved.js?v=0.35.1';
-import { CITY_CENTROIDS } from './data/city-centroids.js?v=0.35.1';
-import { puffFrom } from './lib/confetti.js?v=0.35.1';
-import { track, listingOf, grantConsent } from './lib/analytics.js?v=0.35.1';
+import { isSaved, toggleSave, markVisited, counts } from './lib/saved.js?v=0.35.7';
+import { CITY_CENTROIDS } from './data/city-centroids.js?v=0.35.7';
+import { puffFrom } from './lib/confetti.js?v=0.35.7';
+import { track, listingOf, grantConsent } from './lib/analytics.js?v=0.35.7';
 
 const PIN = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>';
 
@@ -72,6 +72,38 @@ document.addEventListener('click', (e) => {
 // ── Listing filter (All / Law Firms / Attorneys) + ranking + pagination ──────
 // The filtered set is re-ranked (No.1/2/3 of the filtered group), paginated on
 // its own (first 20, then +20), and the choice is remembered across pages.
+// Gentle "peek" so visitors discover a long firm name slides sideways. Only
+// names that actually overflow tease, each on its own clock, and it stops the
+// instant the user touches or scrolls it. Honors reduced-motion. Idempotent.
+const REDUCED_MOTION = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function teaseNames(root = document) {
+  if (REDUCED_MOTION) return;
+  root.querySelectorAll('.lc-name').forEach((el) => {
+    if (el.dataset.tease || el.offsetParent === null) return;     // done, or hidden/collapsed
+    const over = el.scrollWidth - el.clientWidth;
+    if (over < 14) return;                                        // fits — nothing to slide
+    el.dataset.tease = '1';
+    el.style.scrollBehavior = 'smooth';
+    const dist = Math.min(over, 44);
+    const period = 3200 + Math.random() * 2800;                   // individual speed
+    let stop = false, auto = false, t1, t2, t3;
+    const halt = () => { stop = true; clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
+      el.removeEventListener('pointerdown', halt); el.removeEventListener('wheel', onUser); };
+    const onUser = () => { if (!auto) halt(); };                  // a real user scroll ends it
+    el.addEventListener('pointerdown', halt, { passive: true });
+    el.addEventListener('wheel', onUser, { passive: true });
+    const cycle = () => {
+      if (stop) return;
+      auto = true; el.scrollTo({ left: dist });
+      t1 = setTimeout(() => { el.scrollTo({ left: 0 });
+        t2 = setTimeout(() => { auto = false; }, 700);
+        t3 = setTimeout(cycle, period); }, 1200);
+    };
+    setTimeout(cycle, Math.random() * period);                    // individual start time
+  });
+}
+addEventListener('load', () => { teaseNames(); setTimeout(teaseNames, 900); });
+
 const FILTER_KEY = 'gal.filter';
 (() => {
   const list = document.querySelector('[data-more-list]');
@@ -117,6 +149,7 @@ const FILTER_KEY = 'gal.filter';
       emptyEl.style.display = '';
     } else if (emptyEl) emptyEl.style.display = 'none';
     segments.forEach(s => { const on = s.dataset.filter === filter; s.classList.toggle('is-active', on); s.setAttribute('aria-selected', String(on)); });
+    teaseNames(list);                                      // newly revealed names get the slide hint
   };
 
   segments.forEach(s => s.addEventListener('click', () => {

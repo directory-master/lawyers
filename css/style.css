@@ -261,7 +261,11 @@ img { display: block; max-width: 100%; }
 .area-intro { color: var(--label-2); font-size: 15.5px; line-height: 1.5; margin: 6px 2px 18px; }
 
 /* ── Card ───────────────────────────────────────────────────────────────── */
-.card-list { display: flex; flex-direction: column; gap: 14px; margin-bottom: 24px; }
+/* Photo cards tile in a responsive grid: 2 per row on phones, 3 on tablets,
+   4 on wide screens. */
+.card-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px; margin-bottom: 24px; align-items: start; }
+@media (min-width: 680px) { .card-list { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; } }
 /* Editorial card: a framed square thumbnail + serif name, with a gold accent
    rail down the left edge for brand chrome. Paid tiers add a warm tint + ribbon. */
 .card { position: relative; background: var(--bg-elevated); border-radius: var(--radius-lg);
@@ -745,52 +749,94 @@ a[href], button, [role="button"], label[for], select, summary,
 /* ============================================================================
    Editorial "letterhead" lawyer card (.lc) — Georgia Counsel look
    ========================================================================== */
-.lc { position: relative; padding-top: 27px; }
-.lc-tabs { position: absolute; top: 0; left: 12px; display: flex; z-index: 1; }
-.lc-tab { height: 31px; display: inline-flex; align-items: center; padding: 0 15px;
-  font-family: var(--font); font-size: 11.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
-  border-radius: 9px 9px 0 0; }
-.lc-tab--rank { background: var(--ink); color: var(--gilt); }
-.lc-tab--kind { background: #f1e6e6; color: var(--ox); }
-.lc-tab--promoted { background: var(--gilt); color: var(--ink); }
-.lc-card { position: relative; background: var(--bg-elevated); border: 1px solid var(--separator);
-  border-radius: 14px; overflow: hidden;
-  box-shadow: inset 3px 0 0 var(--gilt), var(--card-shadow); }
+/* "Bottom glass" photo card with an oxblood letterhead band on top: the band is
+   the outer header strip (rank · firm/attorney + save), the listing photo fills
+   the area below it, a gradient scrim anchors white text low over the photo, an
+   oxblood wax seal stamps the rating, and the actions are frosted-glass buttons.
+   Falls back to a charcoal panel + big initials when a listing has no photo. */
+/* Hand cursor for anything clickable, site-wide (buttons default to an arrow). */
+button:not(:disabled), [role="button"], a[href], label[for], summary,
+.segment, .qa-tile, .lc-save, .lc-btn, .lc-namelink, .seg, .tab { cursor: pointer; }
+:disabled { cursor: not-allowed; }
 
-.lc-save { position: absolute; top: 14px; right: 14px; width: 38px; height: 38px; border-radius: 10px;
-  display: inline-flex; align-items: center; justify-content: center; cursor: pointer; z-index: 2;
-  border: 1px solid var(--separator); background: var(--bg-elevated); color: var(--label-3);
-  transition: color .15s, background .15s, transform .12s; }
-.lc-save:active { transform: scale(.9); }
-.lc-save.is-saved { color: var(--gilt-deep); background: color-mix(in srgb, var(--gilt) 12%, transparent);
-  border-color: color-mix(in srgb, var(--gilt) 45%, var(--separator)); }
+.lc { position: relative; }
+.lc-card { position: relative; border-radius: 16px; overflow: hidden; isolation: isolate;
+  display: flex; flex-direction: column; box-shadow: var(--card-shadow); }
+
+.lc-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  object-position: top center; z-index: 0; }
+.lc-bg--initials { display: flex; align-items: flex-start; justify-content: center; padding-top: 22px;
+  font-family: var(--font-serif); font-weight: 700; font-size: 88px; letter-spacing: .04em;
+  color: rgba(255,255,255,.13); }
+.lc-scrim { position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: linear-gradient(180deg, rgba(16,16,20,.4) 0%, rgba(16,16,20,0) 30%,
+    rgba(16,16,20,.6) 62%, rgba(16,16,20,.95) 100%); }
+
+/* Outer oxblood band — its own strip above the photo, not over it. */
+.lc-band { display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 7px 12px; background: var(--ox); color: #fff; }
+.lc-tabs { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.lc-tab { font-family: var(--font); font-size: 10px; font-weight: 800; letter-spacing: .09em;
+  text-transform: uppercase; color: rgba(255,255,255,.74); white-space: nowrap; }
+.lc-tab--rank { font-family: var(--font-serif); font-size: 13px; font-weight: 700; letter-spacing: .01em;
+  text-transform: none; color: #fff; }
+.lc-tab--rank + .lc-tab--kind::before,
+.lc-tab--promoted::before { content: "·"; margin-right: 8px; color: rgba(255,255,255,.5); }
+.lc-tab--promoted { color: var(--gilt-soft); }
+
+.lc-save { flex-shrink: 0; width: 28px; height: 28px; border-radius: 8px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: none; background: transparent; color: #fff; transition: transform .12s, color .15s; }
+.lc-save:active { transform: scale(.85); }
+.lc-save.is-saved { color: var(--gilt-soft); }
 .lc-save.is-saved svg { fill: currentColor; }
 
-.lc-main { display: flex; gap: 14px; padding: 16px 16px 16px 19px; position: relative; }
-.lc-thumb, .lc-info { position: relative; z-index: 1; }
-/* Distance from the visitor, stamped as a faint serif watermark behind the card
-   text (filled by static.js once a location is remembered; hidden until then). */
-.lc-wm { position: absolute; z-index: 0; right: 14px; top: 50%; transform: translateY(-50%) rotate(-8deg);
-  pointer-events: none; font-family: var(--font-serif); font-weight: 800; font-size: 40px; line-height: 1;
-  letter-spacing: -0.02em; color: var(--gilt-deep); opacity: .13; white-space: nowrap; }
+/* Photo region: holds the background, scrim, distance stamp, and glass body. */
+.lc-photo { position: relative; flex: 1; min-height: 320px; display: flex; flex-direction: column;
+  justify-content: flex-end; background: linear-gradient(150deg, #2c2c36, var(--ink)); }
+.lc--solo .lc-photo { min-height: 400px; }
+
+/* Distance from the visitor, stamped over the photo (filled by static.js once a
+   location is remembered; hidden until then). */
+.lc-wm { position: absolute; z-index: 2; top: 12px; right: 14px; white-space: nowrap;
+  font-family: var(--font-serif); font-weight: 700; font-size: 15px; color: rgba(255,255,255,.9);
+  text-shadow: 0 1px 6px rgba(0,0,0,.6); }
 .lc-wm:empty { display: none; }
-.lc-thumb { width: 60px; height: 60px; flex-shrink: 0; border-radius: 10px; overflow: hidden;
-  border: 1.5px solid color-mix(in srgb, var(--gilt) 55%, transparent); background: var(--bg-tint); }
-.lc-thumb img { width: 100%; height: 100%; object-fit: cover; object-position: top center; }
-.lc-thumb--initials { display: flex; align-items: center; justify-content: center;
-  font-family: var(--font-serif); font-weight: 700; font-size: 21px; color: var(--gilt-deep); }
-.lc-info { min-width: 0; flex: 1; padding-right: 38px; }
-.lc-name { font-family: var(--font-serif); font-size: 20px; font-weight: 700; color: var(--ink);
-  line-height: 1.15; letter-spacing: -0.01em; }
+
+/* Frosted-glass plate behind the text so white copy stays readable over any
+   photo (the #14 idea, made glassy). */
+.lc-body { position: relative; z-index: 2; margin: 0 9px 9px; padding: 14px 13px 12px; border-radius: 14px;
+  background: linear-gradient(180deg, rgba(16,16,20,.34), rgba(16,16,20,.66));
+  border: 1px solid rgba(255,255,255,.12); box-shadow: 0 8px 22px -12px rgba(0,0,0,.7);
+  -webkit-backdrop-filter: blur(10px) saturate(1.15); backdrop-filter: blur(10px) saturate(1.15); }
+/* One line, scrolls sideways for long names. The scrollbar is hidden and the
+   right edge fades to hint there's more to slide. (title attr still tooltips.) */
+.lc-name { font-family: var(--font-serif); font-size: 21px; font-weight: 700; color: #fff;
+  line-height: 1.2; letter-spacing: -0.01em; padding-right: 6px;
+  white-space: nowrap; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain;
+  touch-action: pan-x; -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; -ms-overflow-style: none;
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 26px), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 26px), transparent);
+  text-shadow: 0 1px 10px rgba(0,0,0,.55); }
+.lc-name::-webkit-scrollbar { display: none; }
 .lc-namelink { color: inherit; text-decoration: none; }
 .lc-namelink:hover { text-decoration: underline; text-underline-offset: 2px; }
-.lc-sub { font-size: 13.5px; color: var(--label-2); margin-top: 4px; }
-.lc-meta { display: flex; align-items: center; gap: 9px; margin-top: 9px; }
-.lc-rating { display: inline-flex; align-items: center; gap: 4px; padding: 4px 11px; border-radius: 999px;
-  background: var(--ink); color: #fff; font-size: 13px; font-weight: 800; border: 1px solid var(--gilt); }
-.lc-rating--new { background: var(--fill); color: var(--label-2); border-color: var(--separator); }
-.lc-star { color: var(--gilt); }
-.lc-reviews { font-size: 13px; color: var(--label-2); font-weight: 600; }
+.lc-sub { font-size: 13px; font-weight: 600; color: rgba(255,255,255,.8); margin-top: 3px;
+  text-shadow: 0 1px 8px rgba(0,0,0,.5); }
+.lc-meta { display: flex; align-items: center; gap: 9px; margin-top: 7px; }
+.lc-meta:empty { display: none; }
+.lc-star { color: var(--gilt-soft); }
+.lc-reviews { font-size: 12.5px; font-weight: 600; color: rgba(255,255,255,.72);
+  text-shadow: 0 1px 8px rgba(0,0,0,.5); }
+/* Oxblood wax-seal rating, stamped on the photo just above the text plate so the
+   name has the full width to scroll. */
+.lc-seal { position: absolute; top: -52px; right: 12px; width: 46px; height: 46px; border-radius: 999px;
+  z-index: 3; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 35% 30%, #8e3242, var(--ox));
+  border: 2px solid rgba(255,255,255,.92); color: #fff; box-shadow: 0 4px 12px rgba(110,27,42,.5); }
+.lc-seal .lc-star { color: #fff; font-size: 9px; line-height: 1; }
+.lc-seal-n { font-size: 13px; font-weight: 800; line-height: 1.15; }
 /* Animated review-source label: "from Avvo" flips to "from Yelp" … (one word at a
    time, cycled by static.js when 2+ sources). Degrades to static text without JS. */
 .srcflip { position: relative; display: inline-block; vertical-align: bottom; height: 1.3em; overflow: hidden; }
@@ -805,20 +851,84 @@ a[href], button, [role="button"], label[for], select, summary,
   .srcflip .src-word { transition: opacity .25s; transform: none; }
   .srcflip .src-word.is-out { transform: none; }
 }
-.lc-addr { display: flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--label-2); margin-top: 9px; }
-.lc-addr .icon { color: var(--gilt-deep); flex-shrink: 0; }
+.lc-reviews .srcflip .src-word { color: var(--gilt-soft); }
+.lc-addr { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: rgba(255,255,255,.8);
+  margin-top: 8px; text-shadow: 0 1px 8px rgba(0,0,0,.5); }
+.lc-addr .icon { color: var(--gilt-soft); flex-shrink: 0; }
 .lc-addr span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.lc-actions { display: flex; border-top: 1px solid var(--separator); }
-.lc-btn { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
-  padding: 16px 6px; font-size: 14.5px; font-weight: 700; color: var(--ink);
-  border-left: 1px solid var(--separator); transition: background .15s; }
-.lc-btn:first-child { border-left: none; }
-.lc-btn:active { background: var(--fill); }
-.lc-btn .icon { color: var(--gilt-deep); }
-.lc-btn--call { background: var(--ox); color: #fff; }
-.lc-btn--call .icon { color: #fff; }
+/* Frosted-glass actions: a labelled Call, plus icon-only Directions and Website. */
+.lc-actions { display: flex; gap: 6px; margin-top: 12px; }
+.lc-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 38px;
+  border-radius: 9px; font-size: 13.5px; font-weight: 700; color: #fff;
+  background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.26);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); transition: background .15s, transform .12s; }
+.lc-btn:active { transform: scale(.96); background: rgba(255,255,255,.26); }
+.lc-btn .icon { color: #fff; }
+.lc-btn--call { flex: 1; background: var(--ox); border-color: transparent; }
 .lc-btn--call:active { background: var(--ox-press); }
+/* Directions / Website collapse to square icon buttons; only the text label is
+   visually hidden (the icon lives in a span.icon, so exclude it). */
+.lc-btn:not(.lc-btn--call) { flex: 0 0 46px; }
+.lc-btn:not(.lc-btn--call) span:not(.icon) { position: absolute; width: 1px; height: 1px; padding: 0;
+  margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+/* When a listing has no phone, the first action carries the visible label. */
+.lc-actions > .lc-btn:first-child:not(.lc-btn--call) { flex: 1; }
+.lc-actions > .lc-btn:first-child:not(.lc-btn--call) span:not(.icon) { position: static; width: auto;
+  height: auto; margin: 0; clip: auto; }
+
+/* ── Top-five frames: each ranked card earns its own border + glow ────────── */
+.lc--rank1 .lc-card { border: 2px solid var(--gilt);
+  box-shadow: 0 0 0 1px var(--gilt-soft), 0 10px 30px -8px rgba(168,137,60,.55), var(--card-shadow);
+  animation: lc-gold 3s ease-in-out infinite; }
+.lc--rank2 .lc-card { border: 2px solid #b7bcc6;
+  box-shadow: 0 8px 26px -10px rgba(160,166,176,.5), var(--card-shadow); }
+.lc--rank3 .lc-card { border: 2px solid #c98a4b;
+  box-shadow: 0 8px 26px -10px rgba(201,138,75,.5), var(--card-shadow); }
+.lc--rank4 .lc-card { border: 1.5px solid var(--ox);
+  box-shadow: 0 8px 24px -12px rgba(110,27,42,.45), var(--card-shadow); }
+.lc--rank5 .lc-card { border: 1.5px solid var(--gilt-deep);
+  box-shadow: 0 8px 22px -12px rgba(138,110,46,.4), var(--card-shadow); }
+/* medal tint on the silver/bronze numerals (gold already reads on oxblood) */
+.lc--rank2 .lc-tab--rank { color: #eaeef4; }
+.lc--rank3 .lc-tab--rank { color: #f1c69e; }
+@keyframes lc-gold {
+  0%, 100% { box-shadow: 0 0 0 1px var(--gilt-soft), 0 8px 24px -10px rgba(168,137,60,.4), var(--card-shadow); }
+  50% { box-shadow: 0 0 0 1px var(--gilt), 0 12px 34px -6px rgba(168,137,60,.72), var(--card-shadow); }
+}
+
+/* ── Call icon shakes; each card rings at its own --ring speed ────────────── */
+.lc-btn--call .icon { transform-origin: center; animation: phone-ring var(--ring, 1.8s) ease-in-out infinite; }
+
+/* ── Top-five Directions button: gold, silver, bronze, glowing green, then a
+      pulsing all-white for No.5 ─────────────────────────────────────────────── */
+.lc--rank1 .lc-btn[aria-label="Directions"] { background: rgba(168,137,60,.22); border-color: var(--gilt); }
+.lc--rank1 .lc-btn[aria-label="Directions"] .icon { color: var(--gilt-soft); }
+.lc--rank2 .lc-btn[aria-label="Directions"] { background: rgba(196,200,208,.22); border-color: #c4c8d0; }
+.lc--rank2 .lc-btn[aria-label="Directions"] .icon { color: #e6eaf1; }
+.lc--rank3 .lc-btn[aria-label="Directions"] { background: rgba(200,127,58,.22); border-color: #c87f3a; }
+.lc--rank3 .lc-btn[aria-label="Directions"] .icon { color: #e3a366; }
+.lc--rank4 .lc-btn[aria-label="Directions"] { border-color: #36d07f; background: rgba(54,208,127,.16);
+  animation: dir-glow 1.8s ease-in-out infinite; }
+.lc--rank4 .lc-btn[aria-label="Directions"] .icon { color: #5be39a; }
+.lc--rank5 .lc-btn[aria-label="Directions"] { border-color: #fff;
+  animation: dir-pulse 1.4s ease-in-out infinite; }
+.lc--rank5 .lc-btn[aria-label="Directions"] .icon { color: #fff; }
+@keyframes dir-glow {
+  0%, 100% { box-shadow: 0 0 6px rgba(54,208,127,.45), inset 0 0 6px rgba(54,208,127,.2); }
+  50% { box-shadow: 0 0 17px rgba(54,208,127,.9), inset 0 0 11px rgba(54,208,127,.4); }
+}
+@keyframes dir-pulse {
+  0%, 100% { background: rgba(255,255,255,.16); box-shadow: 0 0 0 0 rgba(255,255,255,.55); }
+  50% { background: rgba(255,255,255,.38); box-shadow: 0 0 0 5px rgba(255,255,255,0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lc--rank1 .lc-card { animation: none; }
+  .lc-btn--call .icon { animation: none; }
+  .lc--rank4 .lc-btn[aria-label="Directions"],
+  .lc--rank5 .lc-btn[aria-label="Directions"] { animation: none; }
+}
 
 /* Home Docket champion ("selected ranking") card: the lawyer photo becomes the
    card background with a dark scrim in front, so the white text reads over it. */
@@ -985,9 +1095,8 @@ a:focus-visible, button:focus-visible, [role="button"]:focus-visible, input:focu
    hero, and nav all read --maxw, so one override re widths the whole page. */
 @media (min-width: 1024px) {
   :root { --maxw: 1120px; }
-  /* listings spread across the width instead of one tall column */
-  .card-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px; align-items: start; }
+  /* listings spread across the width: four per row on wide screens */
+  .card-list { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
   .featured-grid { grid-template-columns: repeat(4, 1fr); }
   /* drop the photo on wide screens, keep the ink + gold wash so the hero
      reads as a clean letterhead band instead of a stretched stock image */
