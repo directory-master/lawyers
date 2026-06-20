@@ -4,10 +4,10 @@
 // tracking, the entity filter, "show more" pagination, "near me" → your city,
 // the near-you banner, and the search box. Content is already in the HTML.
 
-import { isSaved, toggleSave, markVisited, counts } from './lib/saved.js?v=0.35.7';
-import { CITY_CENTROIDS } from './data/city-centroids.js?v=0.35.7';
-import { puffFrom } from './lib/confetti.js?v=0.35.7';
-import { track, listingOf, grantConsent } from './lib/analytics.js?v=0.35.7';
+import { isSaved, toggleSave, markVisited, counts } from './lib/saved.js?v=0.35.8';
+import { CITY_CENTROIDS } from './data/city-centroids.js?v=0.35.8';
+import { puffFrom } from './lib/confetti.js?v=0.35.8';
+import { track, listingOf, grantConsent } from './lib/analytics.js?v=0.35.8';
 
 const PIN = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>';
 
@@ -83,23 +83,34 @@ function teaseNames(root = document) {
     const over = el.scrollWidth - el.clientWidth;
     if (over < 14) return;                                        // fits — nothing to slide
     el.dataset.tease = '1';
-    el.style.scrollBehavior = 'smooth';
-    const dist = Math.min(over, 44);
-    const period = 3200 + Math.random() * 2800;                   // individual speed
-    let stop = false, auto = false, t1, t2, t3;
-    const halt = () => { stop = true; clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
-      el.removeEventListener('pointerdown', halt); el.removeEventListener('wheel', onUser); };
-    const onUser = () => { if (!auto) halt(); };                  // a real user scroll ends it
+    const dist = Math.min(over, 30);                              // a small, subtle peek
+    const OUT = 1700, HOLD = 650, BACK = 1700;                    // slow, gentle glide
+    const gap = 2800 + Math.random() * 2800;                      // individual rest between peeks
+    let stop = false;
+    const ease = (t) => 0.5 - Math.cos(Math.PI * t) / 2;         // easeInOutSine
+    const halt = () => { stop = true; el.removeEventListener('pointerdown', halt); el.removeEventListener('wheel', halt); };
     el.addEventListener('pointerdown', halt, { passive: true });
-    el.addEventListener('wheel', onUser, { passive: true });
-    const cycle = () => {
-      if (stop) return;
-      auto = true; el.scrollTo({ left: dist });
-      t1 = setTimeout(() => { el.scrollTo({ left: 0 });
-        t2 = setTimeout(() => { auto = false; }, 700);
-        t3 = setTimeout(cycle, period); }, 1200);
-    };
-    setTimeout(cycle, Math.random() * period);                    // individual start time
+    el.addEventListener('wheel', halt, { passive: true });
+    const tween = (from, to, dur) => new Promise((res) => {
+      const t0 = performance.now();
+      const step = (now) => {
+        if (stop) return res();
+        const p = Math.min(1, (now - t0) / dur);
+        el.scrollLeft = from + (to - from) * ease(p);
+        p < 1 ? requestAnimationFrame(step) : res();
+      };
+      requestAnimationFrame(step);
+    });
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    (async () => {
+      await wait(Math.random() * gap);                            // individual start time
+      while (!stop) {
+        await tween(0, dist, OUT);
+        await wait(HOLD);
+        await tween(dist, 0, BACK);
+        await wait(gap);
+      }
+    })();
   });
 }
 addEventListener('load', () => { teaseNames(); setTimeout(teaseNames, 900); });
