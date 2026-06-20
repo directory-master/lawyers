@@ -805,7 +805,7 @@ button:not(:disabled), [role="button"], a[href], label[for], summary,
 
 /* Frosted-glass plate behind the text so white copy stays readable over any
    photo (the #14 idea, made glassy). */
-.lc-body { position: relative; z-index: 2; margin: 0; padding: 13px 13px 12px; border-radius: 14px 14px 0 0;
+.lc-body { position: relative; z-index: 2; margin: 0; padding: 13px 13px 12px; border-radius: 0;
   background: linear-gradient(180deg, rgba(16,16,20,.34), rgba(16,16,20,.66));
   border-top: 1px solid rgba(255,255,255,.12); box-shadow: 0 -8px 22px -12px rgba(0,0,0,.7);
   -webkit-backdrop-filter: blur(10px) saturate(1.15); backdrop-filter: blur(10px) saturate(1.15); }
