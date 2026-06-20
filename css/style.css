@@ -805,9 +805,9 @@ button:not(:disabled), [role="button"], a[href], label[for], summary,
 
 /* Frosted-glass plate behind the text so white copy stays readable over any
    photo (the #14 idea, made glassy). */
-.lc-body { position: relative; z-index: 2; margin: 0 9px 9px; padding: 14px 13px 12px; border-radius: 14px;
+.lc-body { position: relative; z-index: 2; margin: 0; padding: 13px 13px 12px; border-radius: 14px 14px 0 0;
   background: linear-gradient(180deg, rgba(16,16,20,.34), rgba(16,16,20,.66));
-  border: 1px solid rgba(255,255,255,.12); box-shadow: 0 8px 22px -12px rgba(0,0,0,.7);
+  border-top: 1px solid rgba(255,255,255,.12); box-shadow: 0 -8px 22px -12px rgba(0,0,0,.7);
   -webkit-backdrop-filter: blur(10px) saturate(1.15); backdrop-filter: blur(10px) saturate(1.15); }
 /* One line, scrolls sideways for long names. The scrollbar is hidden and the
    right edge fades to hint there's more to slide. (title attr still tooltips.) */
@@ -820,7 +820,8 @@ button:not(:disabled), [role="button"], a[href], label[for], summary,
   mask-image: linear-gradient(90deg, #000 calc(100% - 26px), transparent);
   text-shadow: 0 1px 10px rgba(0,0,0,.55); }
 .lc-name::-webkit-scrollbar { display: none; }
-.lc-namelink { color: inherit; text-decoration: none; }
+.lc-namelink { display: inline; margin: 0; padding: 0; border: 0; background: none; font: inherit;
+  color: inherit; letter-spacing: inherit; white-space: nowrap; cursor: pointer; -webkit-appearance: none; }
 .lc-namelink:hover { text-decoration: underline; text-underline-offset: 2px; }
 .lc-sub { font-size: 13px; font-weight: 600; color: rgba(255,255,255,.8); margin-top: 3px;
   text-shadow: 0 1px 8px rgba(0,0,0,.5); }
@@ -858,18 +859,26 @@ button:not(:disabled), [role="button"], a[href], label[for], summary,
 .lc-addr span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Frosted-glass actions: a labelled Call, plus icon-only Directions and Website. */
-.lc-actions { display: flex; gap: 6px; margin-top: 12px; }
-.lc-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 38px;
-  border-radius: 9px; font-size: 13.5px; font-weight: 700; color: #fff;
+.lc-actions { display: flex; gap: 5px; margin-top: 12px; }
+.lc-btn { display: inline-flex; align-items: center; justify-content: center; gap: 5px; height: 38px;
+  border-radius: 9px; font-size: 13.5px; font-weight: 700; color: #fff; white-space: nowrap;
   background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.26);
   -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); transition: background .15s, transform .12s; }
 .lc-btn:active { transform: scale(.96); background: rgba(255,255,255,.26); }
 .lc-btn .icon { color: #fff; }
 .lc-btn--call { flex: 1; background: var(--ox); border-color: transparent; }
 .lc-btn--call:active { background: var(--ox-press); }
+/* On phones (2-col grid) the Call button is icon-only; the label returns on the
+   roomier 3-col layout (>=680px, matching .card-list). */
+.lc-btn--call span:not(.icon) { position: absolute; width: 1px; height: 1px; padding: 0;
+  margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+@media (min-width: 680px) {
+  .lc-btn--call span:not(.icon) { position: static; width: auto; height: auto; padding: 0;
+    margin: 0; clip: auto; }
+}
 /* Directions / Website collapse to square icon buttons; only the text label is
    visually hidden (the icon lives in a span.icon, so exclude it). */
-.lc-btn:not(.lc-btn--call) { flex: 0 0 46px; }
+.lc-btn:not(.lc-btn--call) { flex: 0 0 38px; }
 .lc-btn:not(.lc-btn--call) span:not(.icon) { position: absolute; width: 1px; height: 1px; padding: 0;
   margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 /* When a listing has no phone, the first action carries the visible label. */
@@ -929,6 +938,37 @@ button:not(:disabled), [role="button"], a[href], label[for], summary,
   .lc--rank4 .lc-btn[aria-label="Directions"],
   .lc--rank5 .lc-btn[aria-label="Directions"] { animation: none; }
 }
+
+/* ── In-page lawyer profile modal (opened from a card; replaces /lawyer/ pages) */
+.profile-sheet { padding: 0; overflow: hidden; max-width: 460px; }
+.profile-close { position: absolute; top: 12px; right: 12px; z-index: 3; width: 34px; height: 34px;
+  border-radius: 999px; border: none; display: grid; place-items: center; cursor: pointer; color: #fff;
+  background: rgba(26,26,31,.5); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.profile-photo { display: block; width: 100%; height: 210px; object-fit: cover; object-position: top center;
+  background: linear-gradient(150deg, #2c2c36, var(--ink)); }
+.profile-photo--ini { display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-serif); font-weight: 700; font-size: 76px; color: rgba(255,255,255,.18); }
+.profile-body { padding: 16px 18px 20px; }
+.profile-eyebrow { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ox); }
+.profile-name { font-family: var(--font-serif); font-size: 24px; font-weight: 700; color: var(--ink);
+  line-height: 1.15; margin-top: 4px; }
+.profile-rate { display: flex; align-items: center; gap: 6px; margin-top: 9px; font-size: 14px;
+  font-weight: 800; color: var(--ink); }
+.profile-rate .profile-star { color: var(--gilt); }
+.profile-rate .profile-dim { color: var(--label-2); font-weight: 600; }
+.profile-addr { display: flex; align-items: center; gap: 7px; margin-top: 10px; font-size: 14px;
+  color: var(--label-2); }
+.profile-addr .icon, .profile-addr svg { color: var(--gilt-deep); flex-shrink: 0; }
+.profile-actions { display: flex; gap: 8px; margin-top: 16px; }
+.profile-btn { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  height: 48px; border-radius: 12px; font-size: 14.5px; font-weight: 700; color: var(--ink);
+  border: 1px solid var(--separator); background: var(--bg-elevated); cursor: pointer; }
+.profile-btn .icon { color: var(--gilt-deep); }
+.profile-btn:active { background: var(--fill); }
+.profile-btn--call { background: var(--ox); color: #fff; border-color: transparent; }
+.profile-btn--call .icon { color: #fff; }
+.profile-btn--call:active { background: var(--ox-press); }
 
 /* Home Docket champion ("selected ranking") card: the lawyer photo becomes the
    card background with a dark scrim in front, so the white text reads over it. */

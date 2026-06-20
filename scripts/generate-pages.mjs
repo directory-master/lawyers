@@ -239,8 +239,9 @@ function cardHTML(l, rank, extraClass = '', link = true) {
   const reviews = l.reviews ? `<span class="lc-reviews">${nf(l.reviews)} review${l.reviews === 1 ? '' : 's'}${srcFlipHTML(reviewSourceList(l))}</span>` : '';
   const coords = (l.lat != null && l.lng != null) ? ` data-lat="${l.lat}" data-lng="${l.lng}"` : '';
   const rankCls = (rank != null && rank <= 5) ? ` lc--rank${rank}` : '';
-  // title gives long names a native tooltip; CSS clamps the name to two lines.
-  const nameInner = link ? `<a class="lc-namelink" href="/lawyer/${attr(l.id)}/">${esc(l.name)}</a>` : esc(l.name);
+  // The name opens an in-page profile modal (static.js); title gives the full
+  // name on hover, and the name scrolls sideways for long firms.
+  const nameInner = `<button type="button" class="lc-namelink" data-profile>${esc(l.name)}</button>`;
   return `<article class="lc${rankCls}${extraClass ? ' ' + extraClass : ''}" style="--ring:${ringDur(l.id)}" data-listing-id="${attr(l.id)}" data-entity="${l.entity}" data-rating="${l.rating || 0}" data-reviews="${l.reviews || 0}"${coords}>
   <div class="lc-card">
     <div class="lc-band">
@@ -643,115 +644,11 @@ for (const a of AREAS) {
 // practice area statewide, so a profile can state "Ranked No. 3 of 42 …". Built
 // once (not per profile) from the same byRank order the list pages use, so the
 // badge always matches the position on the list it links to.
-const RANKS = (() => {
-  const m = new Map();
-  for (const a of AREAS) {
-    [...a.listings].sort(byRank).forEach((l, i) => { const e = m.get(l.id) || {}; e.aRank = i + 1; e.aTotal = a.listings.length; m.set(l.id, e); });
-  }
-  for (const c of CITIES) {
-    const groups = {};
-    for (const l of c.listings) (groups[l.typeSlug] ||= []).push(l);
-    for (const slug in groups) {
-      const sorted = groups[slug].sort(byRank);
-      sorted.forEach((l, i) => { const e = m.get(l.id) || {}; e.caRank = i + 1; e.caTotal = sorted.length; m.set(l.id, e); });
-    }
-  }
-  return m;
-})();
+// (no precomputed per-listing ranks: profiles are now an in-page modal)
 
-function listingProfilePage(l) {
-  const area = AREAS.find(a => a.slug === l.typeSlug);
-  const short = area ? stripArea(area.name) : l.type;
-  const city = CITIES.find(c => c.slug === l.city);
-  const kind = l.entity === 'firm' ? 'law firm' : 'attorney';
-  const canonical = ORIGIN + `/lawyer/${l.id}/`;
-  const rated = l.rating ? `rated ${l.rating.toFixed(1)} stars${l.reviews ? ` across ${nf(l.reviews)} review${l.reviews === 1 ? '' : 's'}` : ''}` : '';
-  const lede = `${l.name} is ${a_an(kind)} ${kind} practicing ${l.type.toLowerCase()} in ${l.cityName}, Georgia${l.countyName ? `, ${l.countyName} County` : ''}${rated ? `, ${rated}` : ''}. Call, get directions, or visit the website in one tap.`;
-  const aboutBits = [];
-  if (l.address) aboutBits.push(`${l.name} is located at ${l.address}.`);
-  if (l.hoursText) aboutBits.push(`Hours: ${l.hoursText}.`);
-  aboutBits.push(`${l.name} is listed under ${l.type} and serves ${l.cityName} and the surrounding ${l.countyName ? `${l.countyName} County` : 'Georgia'} area.`);
-  if (FACTS[l.typeSlug]) aboutBits.push(FACTS[l.typeSlug]);
-  const about = aboutBits.join(' ');
-
-  const social = [l.facebook, l.instagram, l.twitter].filter(Boolean);
-  const near = nearbyCities(l.city, 6);
-  const nearArea = area ? near.filter(n => n.listings.some(x => x.typeSlug === l.typeSlug)).slice(0, 4) : [];
-  const sections = [
-    linkSection('Explore nearby', [
-      city ? chip(`/${l.city}/`, `All ${l.cityName} lawyers`, city.count) : null,
-      area ? chip(`/${l.city}/${l.typeSlug}/`, `${short} in ${l.cityName}`) : null,
-      area ? chip(`/area/${l.typeSlug}/`, `${short} statewide`, area.count) : null,
-      l.zip ? chip(`/zip/${l.zip}/`, `Lawyers in ${l.zip}`) : null,
-      l.countySlug ? chip(`/county/${l.countySlug}/`, `${l.countyName} County`) : null,
-    ].filter(Boolean)),
-    nearArea.length ? linkSection(`${short} lawyers in nearby cities`, nearArea.map(n => chip(`/${n.slug}/${l.typeSlug}/`, `${short} in ${n.name}`))) : '',
-  ].filter(Boolean);
-
-  const faq = [
-    { q: `Where is ${l.name} located?`, a: l.address ? `${l.name} is located at ${l.address}.` : `${l.name} is in ${l.cityName}, Georgia${l.countyName ? `, ${l.countyName} County` : ''}.` },
-    { q: `What kind of lawyer is ${l.name}?`, a: `${l.name} is ${a_an(kind)} ${kind} listed under ${l.type} in ${l.cityName}, GA.` },
-    { q: `How do I contact ${l.name}?`, a: `${l.phone ? `Call ${l.phone}` : `Use the Directions button`}${l.website ? `${l.phone ? ', or ' : ', or '}visit the website` : ''} using the buttons on this page.` },
-    l.rating ? { q: `Is ${l.name} well rated?`, a: `${l.name} is ${rated} from public sources. Ratings and reviews are aggregated and are not an endorsement.` } : null,
-    FACTS[l.typeSlug] ? { q: `What should I know before hiring ${a_an(short)} ${short.toLowerCase()} lawyer in Georgia?`, a: FACTS[l.typeSlug] } : null,
-  ].filter(Boolean);
-
-  const breadcrumbs = [
-    { name: 'Home', href: '/' },
-    { name: l.cityName, href: `/${l.city}/` },
-    area ? { name: short, href: `/${l.city}/${l.typeSlug}/` } : null,
-    { name: l.name, href: `/lawyer/${l.id}/` },
-  ].filter(Boolean);
-
-  // Lean index for a young domain: 5,000+ near-duplicate profile pages get a new
-  // site crawl-throttled and distrusted. Profiles stay live and crawlable (cards
-  // link to them, so UX is unchanged) but are noindex,follow by default, so the
-  // sitemap is just the strong aggregation pages (city / city×area / county / zip
-  // / area). A PAID listing earns an indexed standalone profile as part of its
-  // placement; flip the default back once the domain has authority.
-  const index = l.tier === 'standard' || l.tier === 'premium';
-  const metaDesc = clamp(lede, 158);
-  // Ranked position badge: prefer the city×area board (most specific), fall back
-  // to the statewide practice-area board. Links to the list it is ranked within.
-  const r = RANKS.get(l.id) || {};
-  const board = area && r.caTotal >= 2 ? { rank: r.caRank, total: r.caTotal, place: `${l.cityName}, GA`, href: `/${l.city}/${l.typeSlug}/` }
-    : area && r.aTotal >= 2 ? { rank: r.aRank, total: r.aTotal, place: 'Georgia', href: `/area/${l.typeSlug}/` }
-    : null;
-  const badgeHTML = board
-    ? `<a class="rank-badge" href="${attr(board.href)}">${svg('sparkles', 16, true)}<span>Ranked <b>No. ${board.rank}</b> of ${nf(board.total)} ${esc(short.toLowerCase())} ${l.entity === 'firm' ? 'firms' : 'lawyers'} in ${esc(board.place)}</span></a>`
-    : '';
-  const body = `
-${badgeHTML}
-${cardHTML(l, null, 'lc--solo', false)}
-<section class="profile-about"><div class="section-head"><h2 class="section-title">About ${esc(l.name)}</h2></div><p class="area-intro">${esc(about)}</p></section>
-${sections.join('\n')}
-${faq.length ? dl(faq) : ''}
-${promoSlots()}
-`;
-  const business = {
-    '@type': l.entity === 'attorney' ? 'Attorney' : 'LegalService',
-    '@id': canonical + '#business',
-    name: l.name,
-    image: l.image || undefined,
-    telephone: l.phone || undefined,
-    url: l.website || undefined,
-    address: postalAddress(l),
-    geo: l.lat != null ? { '@type': 'GeoCoordinates', latitude: l.lat, longitude: l.lng } : undefined,
-    areaServed: { '@type': 'City', name: `${l.cityName}, GA` },
-    aggregateRating: l.rating ? { '@type': 'AggregateRating', ratingValue: l.rating, reviewCount: l.reviews || 1 } : undefined,
-    sameAs: social.length ? social : undefined,
-  };
-  const graph = [{ '@type': 'ProfilePage', name: `${l.name} | ${l.cityName}, GA`, description: metaDesc, url: canonical }, business, crumbLd(breadcrumbs)];
-  if (faq.length) graph.push(faqLd(faq));
-  out(`lawyer/${l.id}`, pageShell({
-    title: `${l.name}, ${l.type} in ${l.cityName}, GA | ${SITE}`,
-    desc: metaDesc, canonical, h1: l.name, sub: rated ? `${l.cityName}, GA · ${rated}` : `${l.cityName}, GA`,
-    eyebrow: `${l.type} · ${l.cityName}, GA`, intro: lede, breadcrumbs,
-    jsonld: { '@context': 'https://schema.org', '@graph': graph }, body, index,
-    geo: { placename: `${l.cityName}, GA`, ...(l.lat != null ? { lat: l.lat, lng: l.lng } : {}) }, tab: 'browse',
-  }), { index, priority: l.rating ? 0.5 : 0.4 });
-}
-for (const l of LAWYERS) listingProfilePage(l);
+// Individual lawyer profiles are no longer standalone pages — the card opens an
+// in-page profile modal instead (built client-side from the card, see static.js
+// openProfile). This keeps the repo to the aggregation pages that actually rank.
 
 // ── firm vs attorney leaderboards (/firms/, /attorneys/, + per area) ──────────
 // Dedicated ranked boards for each entity, since "best law firms" and "top

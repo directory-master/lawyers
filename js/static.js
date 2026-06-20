@@ -4,10 +4,10 @@
 // tracking, the entity filter, "show more" pagination, "near me" → your city,
 // the near-you banner, and the search box. Content is already in the HTML.
 
-import { isSaved, toggleSave, markVisited, counts } from './lib/saved.js?v=0.35.8';
-import { CITY_CENTROIDS } from './data/city-centroids.js?v=0.35.8';
-import { puffFrom } from './lib/confetti.js?v=0.35.8';
-import { track, listingOf, grantConsent } from './lib/analytics.js?v=0.35.8';
+import { isSaved, toggleSave, markVisited, counts } from './lib/saved.js?v=0.35.12';
+import { CITY_CENTROIDS } from './data/city-centroids.js?v=0.35.12';
+import { puffFrom } from './lib/confetti.js?v=0.35.12';
+import { track, listingOf, grantConsent } from './lib/analytics.js?v=0.35.12';
 
 const PIN = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>';
 
@@ -114,6 +114,77 @@ function teaseNames(root = document) {
   });
 }
 addEventListener('load', () => { teaseNames(); setTimeout(teaseNames, 900); });
+
+// ── In-page lawyer profile modal (replaces per-listing pages) ─────────────────
+// Built entirely from the card's own DOM, so it works for static pages and any
+// JS-rendered cards alike — tap a card (or its name) to open it.
+const escH = (s) => (s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const mIcon = (p) => `<span class="icon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg></span>`;
+const IC_PHONE = '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>';
+const IC_NAV = '<polygon points="3 11 22 2 13 21 11 13 3 11"/>';
+const IC_GLOBE = '<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>';
+
+function openProfile(card) {
+  if (!card) return;
+  document.querySelector('.modal-backdrop')?.remove();
+  const q = (sel) => card.querySelector(sel);
+  const id = card.dataset.listingId || '';
+  const nameEl = q('.lc-name');
+  const name = (nameEl?.getAttribute('title') || nameEl?.textContent || 'Listing').trim();
+  const kind = (q('.lc-tab--kind')?.textContent || '').trim();
+  const area = (q('.lc-sub')?.textContent || '').trim();
+  const rating = parseFloat(card.dataset.rating) || 0;
+  const reviews = parseInt(card.dataset.reviews, 10) || 0;
+  const addr = (q('.lc-addr span')?.textContent || '').trim();
+  const ini = (q('.lc-bg--initials')?.textContent || '').trim();
+  const photo = q('.lc-bg--photo')?.getAttribute('src') || '';
+  const tel = q('.lc-btn--call')?.getAttribute('href') || '';
+  const maps = q('.lc-btn[aria-label="Directions"]')?.getAttribute('href') || '';
+  const web = q('.lc-btn[aria-label="Website"]')?.getAttribute('href') || '';
+
+  const photoHTML = photo
+    ? `<img class="profile-photo" src="${escH(photo)}" alt="${escH(name)}">`
+    : `<div class="profile-photo profile-photo--ini">${escH(ini)}</div>`;
+  const eyebrow = [kind, area].filter(Boolean).map(escH).join(' · ');
+  const rateHTML = rating
+    ? `<div class="profile-rate"><span class="profile-star">★</span> ${rating.toFixed(1)}${reviews ? ` <span class="profile-dim">· ${reviews.toLocaleString()} review${reviews === 1 ? '' : 's'} from Google</span>` : ''}</div>` : '';
+  const actions = [
+    tel && `<a class="profile-btn profile-btn--call" href="${escH(tel)}" title="Call" data-visit>${mIcon(IC_PHONE)}<span>Call</span></a>`,
+    maps && `<a class="profile-btn" href="${escH(maps)}" target="_blank" rel="noopener" title="Get directions" data-visit>${mIcon(IC_NAV)}<span>Directions</span></a>`,
+    web && `<a class="profile-btn" href="${escH(web)}" target="_blank" rel="noopener nofollow" title="Visit website" data-visit>${mIcon(IC_GLOBE)}<span>Website</span></a>`,
+  ].filter(Boolean).join('');
+
+  const back = document.createElement('div');
+  back.className = 'modal-backdrop';
+  back.innerHTML = `<div class="modal sheet profile-sheet" role="dialog" aria-modal="true" aria-label="${escH(name)}" data-listing-id="${escH(id)}">
+    <div class="sheet-grip"></div>
+    <button class="profile-close" aria-label="Close" data-close>${X_IC}</button>
+    ${photoHTML}
+    <div class="profile-body">
+      ${eyebrow ? `<div class="profile-eyebrow">${eyebrow}</div>` : ''}
+      <h2 class="profile-name">${escH(name)}</h2>
+      ${rateHTML}
+      ${addr ? `<div class="profile-addr">${PIN}<span>${escH(addr)}</span></div>` : ''}
+      <div class="profile-actions">${actions}</div>
+    </div>
+  </div>`;
+  const close = () => { back.remove(); document.removeEventListener('keydown', onKey); };
+  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  back.addEventListener('click', (e) => { if (e.target === back || e.target.closest('[data-close]')) close(); });
+  document.addEventListener('keydown', onKey);
+  const pimg = back.querySelector('img.profile-photo');   // failed photo → initials
+  if (pimg) pimg.onerror = () => pimg.replaceWith(Object.assign(document.createElement('div'), { className: 'profile-photo profile-photo--ini', textContent: ini }));
+  document.body.append(back);
+  if (id) markVisited(id);
+}
+
+// Tap the name, or anywhere on the card that isn't a link/button, to open it.
+document.addEventListener('click', (e) => {
+  const trigger = e.target.closest('.lc-namelink, [data-profile]');
+  if (trigger) { e.preventDefault(); openProfile(trigger.closest('.lc')); return; }
+  const card = e.target.closest('.lc');
+  if (card && !e.target.closest('a, button, [data-save-id]')) openProfile(card);
+});
 
 const FILTER_KEY = 'gal.filter';
 (() => {

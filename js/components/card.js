@@ -7,11 +7,11 @@
 //   Standard  → + photo, hours, "Verified" eligibility.
 //   Premium   → + pinned to top, "Request a consultation" CTA, social links.
 
-import { h } from '../lib/dom.js?v=0.35.8';
-import { icon } from '../lib/icons.js?v=0.35.8';
-import { isSaved, toggleSave, markVisited } from '../lib/saved.js?v=0.35.8';
-import { puffFrom } from '../lib/confetti.js?v=0.35.8';
-import { initials, telHref, prettyHost, mapsHref, stars, fmtRating, fmtDistance, fmtReviews, parseHours, hiResImage, ringDur } from '../lib/format.js?v=0.35.8';
+import { h } from '../lib/dom.js?v=0.35.12';
+import { icon } from '../lib/icons.js?v=0.35.12';
+import { isSaved, toggleSave, markVisited } from '../lib/saved.js?v=0.35.12';
+import { puffFrom } from '../lib/confetti.js?v=0.35.12';
+import { initials, telHref, prettyHost, mapsHref, stars, fmtRating, fmtDistance, fmtReviews, parseHours, hiResImage, ringDur } from '../lib/format.js?v=0.35.12';
 
 const CLAIM_TO = 'artivicolab@gmail.com'; // never rendered as visible text
 
@@ -71,8 +71,10 @@ export function renderCard(l, { rank = null } = {}) {
           l.rating ? h('div', { class: 'lc-seal' },
             h('span', { class: 'lc-star' }, '★'),
             h('span', { class: 'lc-seal-n' }, l.rating.toFixed(1))) : null,
-          // title gives long names a native tooltip; CSS clamps to two lines.
-          h('h3', { class: 'lc-name', title: l.name }, l.name),
+          // the name opens an in-page profile modal (handled by static.js); title
+          // gives the full name on hover, and it scrolls sideways when long.
+          h('h3', { class: 'lc-name', title: l.name },
+            h('button', { class: 'lc-namelink', type: 'button', 'data-profile': '' }, l.name)),
           h('div', { class: 'lc-sub' }, l.type),
           h('div', { class: 'lc-meta' },
             l.reviews ? h('span', { class: 'lc-reviews' }, `${l.reviews.toLocaleString()} review${l.reviews === 1 ? '' : 's'}`) : null,
