@@ -81,12 +81,13 @@ export function renderCard(l, { rank = null } = {}) {
           h('div', { class: 'lc-meta' },
             l.reviews ? h('span', { class: 'lc-reviews' }, `${l.reviews.toLocaleString()} review${l.reviews === 1 ? '' : 's'}`) : null,
           ),
-          h('div', { class: 'lc-addr' }, icon('mapPin', { size: 15 }), h('span', {}, l.address || `${l.cityName}, GA`)),
         ),
       ),
-      // Footer strip BELOW the photo: keeps the actions and the source link off
-      // the image so the glass body stays short and the photo reads clearly.
+      // Footer strip BELOW the photo: keeps the address, actions and source link
+      // off the image so the glass body stays short and the photo reads clearly.
       h('div', { class: 'lc-foot' },
+        // Address gets its own section and scrolls sideways instead of truncating.
+        h('div', { class: 'lc-addr' }, icon('mapPin', { size: 15 }), h('span', {}, l.address || `${l.cityName}, GA`)),
         h('div', { class: 'lc-actions' },
           tel && h('a', { class: 'lc-btn lc-btn--call', href: tel, onclick: visit, title: 'Call' }, icon('phone', { size: 16 }), h('span', {}, 'Call')),
           h('a', { class: 'lc-btn', href: mapsHref(l), target: '_blank', rel: 'noopener', onclick: visit, 'aria-label': 'Directions', title: 'Get directions' }, icon('navigation', { size: 16 }), h('span', {}, 'Directions')),
