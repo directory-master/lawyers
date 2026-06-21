@@ -258,13 +258,15 @@ function cardHTML(l, rank, extraClass = '', link = true) {
         <div class="lc-sub">${esc(l.type)}</div>
         <div class="lc-meta">${reviews}</div>
         <div class="lc-addr">${svg('mapPin', 15)}<span>${esc(l.address || l.cityName + ', GA')}</span></div>
-        <div class="lc-actions">
-          ${tel ? `<a class="lc-btn lc-btn--call" href="${attr(tel)}" title="Call" data-visit>${svg('phone', 16)}<span>Call</span></a>` : ''}
-          <a class="lc-btn" href="${attr(mapsHref(l))}" target="_blank" rel="noopener" aria-label="Directions" title="Get directions" data-visit>${svg('navigation', 16)}<span>Directions</span></a>
-          ${l.website ? `<a class="lc-btn" href="${attr(l.website)}" target="_blank" rel="noopener nofollow" aria-label="Website" title="Visit website" data-visit>${svg('globe', 16)}<span>Website</span></a>` : ''}
-        </div>
-        ${l.sourceUrl ? `<a class="lc-source" href="${attr(l.sourceUrl)}" target="_blank" rel="noopener nofollow" data-visit title="Open this listing on ${attr(l.source)} to check current status">Listed on ${esc(l.source)}. <span class="lc-source-cta">Check current status</span></a>` : ''}
       </div>
+    </div>
+    <div class="lc-foot">
+      <div class="lc-actions">
+        ${tel ? `<a class="lc-btn lc-btn--call" href="${attr(tel)}" title="Call" data-visit>${svg('phone', 16)}<span>Call</span></a>` : ''}
+        <a class="lc-btn" href="${attr(mapsHref(l))}" target="_blank" rel="noopener" aria-label="Directions" title="Get directions" data-visit>${svg('navigation', 16)}<span>Directions</span></a>
+        ${l.website ? `<a class="lc-btn" href="${attr(l.website)}" target="_blank" rel="noopener nofollow" aria-label="Website" title="Visit website" data-visit>${svg('globe', 16)}<span>Website</span></a>` : ''}
+      </div>
+      ${l.sourceUrl ? `<a class="lc-source" href="${attr(l.sourceUrl)}" target="_blank" rel="noopener nofollow" data-visit data-source="${attr(l.source || '')}" title="Open this listing on ${attr(l.source)} to check current status">Check current status</a>` : ''}
     </div>
   </div>
 </article>`;
