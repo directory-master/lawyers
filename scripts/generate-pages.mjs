@@ -95,15 +95,6 @@ const ringDur = (seed) => {
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
   return (1.2 + (h % 120) / 100).toFixed(2) + 's';
 };
-// Mirror of format.js panStyle: per-listing horizontal pan duration + negative
-// start delay so the grid photos drift on their own clocks, never in lockstep.
-const panStyle = (seed) => {
-  const s = String(seed || ''); let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  const dur = 16 + (h % 1500) / 100;
-  const delay = -((Math.floor(h / 7)) % 2400) / 100;
-  return `--pan-dur:${dur.toFixed(2)}s;--pan-delay:${delay.toFixed(2)}s`;
-};
 const distanceMi = (a, b) => { if (!a || !b) return Infinity; const R = 3958.8, tr = d => d * Math.PI / 180; const dLat = tr(b.lat - a.lat), dLng = tr(b.lng - a.lng); const x = Math.sin(dLat / 2) ** 2 + Math.cos(tr(a.lat)) * Math.cos(tr(b.lat)) * Math.sin(dLng / 2) ** 2; return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x)); };
 
 // Inline SVG icons (matches js/lib/icons.js) for server-rendered markup.
@@ -251,7 +242,7 @@ function cardHTML(l, rank, extraClass = '', link = true) {
   // The name opens an in-page profile modal (static.js); title gives the full
   // name on hover, and the name scrolls sideways for long firms.
   const nameInner = `<button type="button" class="lc-namelink" data-profile>${esc(l.name)}</button>`;
-  return `<article class="lc${rankCls}${extraClass ? ' ' + extraClass : ''}" style="--ring:${ringDur(l.id)};${panStyle(l.id)}" data-listing-id="${attr(l.id)}" data-entity="${l.entity}" data-rating="${l.rating || 0}" data-reviews="${l.reviews || 0}" data-address="${attr(l.address || l.cityName + ', GA')}" data-source="${attr(l.source || '')}" data-src-url="${attr(l.sourceUrl || '')}"${coords}>
+  return `<article class="lc${rankCls}${extraClass ? ' ' + extraClass : ''}" style="--ring:${ringDur(l.id)}" data-listing-id="${attr(l.id)}" data-entity="${l.entity}" data-rating="${l.rating || 0}" data-reviews="${l.reviews || 0}" data-address="${attr(l.address || l.cityName + ', GA')}" data-source="${attr(l.source || '')}" data-src-url="${attr(l.sourceUrl || '')}"${coords}>
   <div class="lc-card">
     <div class="lc-band">
       <div class="lc-tabs">${rank != null ? `<span class="lc-tab lc-tab--rank">No. ${rank}</span>` : ''}<span class="lc-tab lc-tab--kind">${kind}</span>${l.tier === 'premium' || l.tier === 'standard' ? `<span class="lc-tab lc-tab--promoted">Promoted</span>` : ''}${l.status === 'temporarily_closed' ? `<span class="lc-tab lc-tab--closed">Temporarily closed</span>` : ''}${l.status === 'permanently_closed' ? `<span class="lc-tab lc-tab--closed">Permanently closed</span>` : ''}</div>

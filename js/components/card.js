@@ -11,7 +11,7 @@ import { h } from '../lib/dom.js';
 import { icon } from '../lib/icons.js';
 import { isSaved, toggleSave, markVisited } from '../lib/saved.js';
 import { puffFrom } from '../lib/confetti.js';
-import { initials, telHref, prettyHost, mapsHref, stars, fmtRating, fmtDistance, fmtReviews, parseHours, hiResImage, ringDur, panStyle } from '../lib/format.js';
+import { initials, telHref, prettyHost, mapsHref, stars, fmtRating, fmtDistance, fmtReviews, parseHours, hiResImage, ringDur } from '../lib/format.js';
 
 const CLAIM_TO = 'artivicolab@gmail.com'; // never rendered as visible text
 
@@ -52,7 +52,7 @@ export function renderCard(l, { rank = null } = {}) {
   const visit = (e) => { e.stopPropagation(); markVisited(l.id); };
   const cls = 'lc' + (rank != null && rank <= 5 ? ' lc--rank' + rank : '');
   return h('article', {
-    class: cls, style: '--ring:' + ringDur(l.id) + ';' + panStyle(l.id),
+    class: cls, style: '--ring:' + ringDur(l.id),
     dataset: { listingId: l.id, entity: l.entity, rating: l.rating || 0, reviews: l.reviews || 0,
       address: l.address || `${l.cityName}, GA`, source: l.source || '', srcUrl: l.sourceUrl || '' },
   },
