@@ -176,7 +176,12 @@ function openProfile(card) {
   back.addEventListener('click', (e) => { if (e.target === back || e.target.closest('[data-close]')) close(); });
   document.addEventListener('keydown', onKey);
   const pimg = back.querySelector('img.profile-photo');   // failed photo → initials
-  if (pimg) pimg.onerror = () => pimg.replaceWith(Object.assign(document.createElement('div'), { className: 'profile-photo profile-photo--ini', textContent: ini }));
+  if (pimg) {
+    pimg.onerror = () => pimg.replaceWith(Object.assign(document.createElement('div'), { className: 'profile-photo profile-photo--ini', textContent: ini }));
+    // Tall (portrait) photos display in full instead of being cropped to the banner.
+    const fitTall = () => { if (pimg.naturalWidth && pimg.naturalHeight > pimg.naturalWidth * 1.05) pimg.classList.add('profile-photo--tall'); };
+    if (pimg.complete) fitTall(); else pimg.addEventListener('load', fitTall);
+  }
   document.body.append(back);
   if (id) markVisited(id);
 }

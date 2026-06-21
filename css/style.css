@@ -982,6 +982,10 @@ button:not(:disabled), [role="button"], a[href], label[for], summary,
   background: rgba(26,26,31,.5); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 .profile-photo { display: block; width: 100%; height: 210px; object-fit: cover; object-position: top center;
   background: linear-gradient(150deg, #2c2c36, var(--ink)); }
+/* Portrait photos show in full (contained, never cropped); the tall stage gets a
+   dark backdrop behind the letterboxed sides. Toggled by static.js on load. */
+.profile-photo--tall { height: 58vh; max-height: 480px; object-fit: contain; object-position: center;
+  background: #0e0e12; }
 .profile-photo--ini { display: flex; align-items: center; justify-content: center;
   font-family: var(--font-serif); font-weight: 700; font-size: 76px; color: rgba(255,255,255,.18); }
 .profile-body { padding: 16px 18px 20px; }
