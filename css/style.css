@@ -797,12 +797,12 @@ button:not(:disabled), [role="button"], a[href], label[for], summary,
 .lc-save.is-saved svg { fill: currentColor; }
 
 /* Photo region: holds the background, scrim, distance stamp, and glass body.
-   Roughly SQUARE (our photos are mostly landscape, so a tall card cropped them to
-   a thin strip). The glass body overlays only the bottom, leaving the image clear
-   above it. */
-.lc-photo { position: relative; aspect-ratio: 1 / 1; min-height: 0; display: flex; flex-direction: column;
+   Shorter than before (our photos are mostly landscape, so a very tall card
+   cropped them to a thin strip), but keeps the original flex sizing so the seal,
+   distance stamp and name scroll all lay out correctly. */
+.lc-photo { position: relative; flex: 1; min-height: 230px; display: flex; flex-direction: column;
   justify-content: flex-end; background: linear-gradient(150deg, #2c2c36, var(--ink)); }
-.lc--solo .lc-photo { aspect-ratio: 4 / 3; }
+.lc--solo .lc-photo { min-height: 320px; }
 
 /* Distance from the visitor, stamped over the photo (filled by static.js once a
    location is remembered; hidden until then). */
@@ -813,7 +813,7 @@ button:not(:disabled), [role="button"], a[href], label[for], summary,
 
 /* Frosted-glass plate behind the text so white copy stays readable over any
    photo (the #14 idea, made glassy). */
-.lc-body { position: relative; z-index: 2; margin: 0; padding: 10px 13px 11px; border-radius: 0;
+.lc-body { position: relative; z-index: 2; margin: 0; padding: 13px 13px 12px; border-radius: 0;
   background: linear-gradient(180deg, rgba(16,16,20,.34), rgba(16,16,20,.66));
   border-top: 1px solid rgba(255,255,255,.12); box-shadow: 0 -8px 22px -12px rgba(0,0,0,.7);
   -webkit-backdrop-filter: blur(10px) saturate(1.15); backdrop-filter: blur(10px) saturate(1.15); }
