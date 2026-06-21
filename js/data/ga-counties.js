@@ -199,6 +199,7 @@ export const CITY_COUNTY = {
   'ball-ground': 'Cherokee',
   blairsville: 'Union',
   bishop: 'Oconee',
+  'big-canoe': 'Pickens',
   'buena-vista': 'Marion',
   chatsworth: 'Murray',
   dawson: 'Terrell',
