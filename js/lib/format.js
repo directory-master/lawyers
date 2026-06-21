@@ -26,6 +26,18 @@ export function ringDur(seed) {
   return (1.2 + (h % 120) / 100).toFixed(2) + 's';
 }
 
+// Per-listing horizontal pan timing for the photo. Both the duration and a
+// NEGATIVE start delay are derived from the id, so every card drifts at its own
+// pace AND starts mid cycle — the grid never pans in lockstep. Server and client
+// agree because it is pure id hashing.
+export function panStyle(seed) {
+  const s = String(seed || ''); let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  const dur = 16 + (h % 1500) / 100;          // 16s – 31s
+  const delay = -((Math.floor(h / 7)) % 2400) / 100; // -0s – -24s (offsets phase)
+  return `--pan-dur:${dur.toFixed(2)}s;--pan-delay:${delay.toFixed(2)}s`;
+}
+
 export function prettyHost(url) {
   if (!url) return null;
   try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]; }

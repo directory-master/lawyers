@@ -11,7 +11,7 @@ import { h } from '../lib/dom.js';
 import { icon } from '../lib/icons.js';
 import { isSaved, toggleSave, markVisited } from '../lib/saved.js';
 import { puffFrom } from '../lib/confetti.js';
-import { initials, telHref, prettyHost, mapsHref, stars, fmtRating, fmtDistance, fmtReviews, parseHours, hiResImage, ringDur } from '../lib/format.js';
+import { initials, telHref, prettyHost, mapsHref, stars, fmtRating, fmtDistance, fmtReviews, parseHours, hiResImage, ringDur, panStyle } from '../lib/format.js';
 
 const CLAIM_TO = 'artivicolab@gmail.com'; // never rendered as visible text
 
@@ -52,8 +52,9 @@ export function renderCard(l, { rank = null } = {}) {
   const visit = (e) => { e.stopPropagation(); markVisited(l.id); };
   const cls = 'lc' + (rank != null && rank <= 5 ? ' lc--rank' + rank : '');
   return h('article', {
-    class: cls, style: '--ring:' + ringDur(l.id),
-    dataset: { listingId: l.id, entity: l.entity, rating: l.rating || 0, reviews: l.reviews || 0 },
+    class: cls, style: '--ring:' + ringDur(l.id) + ';' + panStyle(l.id),
+    dataset: { listingId: l.id, entity: l.entity, rating: l.rating || 0, reviews: l.reviews || 0,
+      address: l.address || `${l.cityName}, GA`, source: l.source || '', srcUrl: l.sourceUrl || '' },
   },
     h('div', { class: 'lc-card' },
       // outer letterhead band (sits above the photo, never over it)
@@ -83,20 +84,15 @@ export function renderCard(l, { rank = null } = {}) {
           ),
         ),
       ),
-      // Footer strip BELOW the photo: keeps the address, actions and source link
-      // off the image so the glass body stays short and the photo reads clearly.
+      // Footer strip BELOW the photo: just the actions, off the image. The
+      // address and "Check current status" link live in the profile modal (built
+      // from this card's data-* attributes), not on the card face.
       h('div', { class: 'lc-foot' },
-        // Address gets its own section and scrolls sideways instead of truncating.
-        h('div', { class: 'lc-addr' }, icon('mapPin', { size: 15 }), h('span', {}, l.address || `${l.cityName}, GA`)),
         h('div', { class: 'lc-actions' },
           tel && h('a', { class: 'lc-btn lc-btn--call', href: tel, onclick: visit, title: 'Call' }, icon('phone', { size: 16 }), h('span', {}, 'Call')),
           h('a', { class: 'lc-btn', href: mapsHref(l), target: '_blank', rel: 'noopener', onclick: visit, 'aria-label': 'Directions', title: 'Get directions' }, icon('navigation', { size: 16 }), h('span', {}, 'Directions')),
           l.website && h('a', { class: 'lc-btn', href: l.website, target: '_blank', rel: 'noopener nofollow', onclick: visit, 'aria-label': 'Website', title: 'Visit website' }, icon('globe', { size: 16 }), h('span', {}, 'Website')),
         ),
-        // Provenance: link out to the public listing we aggregated this from so
-        // the reader can confirm the firm is still open. We are a directory, not
-        // a vetting service, so verification lives at the source.
-        l.sourceUrl && h('a', { class: 'lc-source', href: l.sourceUrl, target: '_blank', rel: 'noopener nofollow', onclick: visit, dataset: { source: l.source || '' }, title: `Open this listing on ${l.source} to check current status` }, 'Check current status'),
       ),
     ),
   );

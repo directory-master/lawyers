@@ -135,15 +135,14 @@ function openProfile(card) {
   const area = (q('.lc-sub')?.textContent || '').trim();
   const rating = parseFloat(card.dataset.rating) || 0;
   const reviews = parseInt(card.dataset.reviews, 10) || 0;
-  const addr = (q('.lc-addr span')?.textContent || '').trim();
+  const addr = (card.dataset.address || '').trim();
   const ini = (q('.lc-bg--initials')?.textContent || '').trim();
   const photo = q('.lc-bg--photo')?.getAttribute('src') || '';
   const tel = q('.lc-btn--call')?.getAttribute('href') || '';
   const maps = q('.lc-btn[aria-label="Directions"]')?.getAttribute('href') || '';
   const web = q('.lc-btn[aria-label="Website"]')?.getAttribute('href') || '';
-  const srcEl = q('.lc-source');
-  const srcUrl = srcEl?.getAttribute('href') || '';
-  const srcName = srcEl?.getAttribute('data-source') || '';
+  const srcUrl = card.dataset.srcUrl || '';
+  const srcName = card.dataset.source || '';
 
   const photoHTML = photo
     ? `<img class="profile-photo" src="${escH(photo)}" alt="${escH(name)}">`
