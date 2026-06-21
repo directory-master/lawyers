@@ -87,6 +87,11 @@ export function renderCard(l, { rank = null } = {}) {
             h('a', { class: 'lc-btn', href: mapsHref(l), target: '_blank', rel: 'noopener', onclick: visit, 'aria-label': 'Directions', title: 'Get directions' }, icon('navigation', { size: 16 }), h('span', {}, 'Directions')),
             l.website && h('a', { class: 'lc-btn', href: l.website, target: '_blank', rel: 'noopener nofollow', onclick: visit, 'aria-label': 'Website', title: 'Visit website' }, icon('globe', { size: 16 }), h('span', {}, 'Website')),
           ),
+          // Provenance: link out to the public listing we aggregated this from so
+          // the reader can confirm the firm is still open. We are a directory, not
+          // a vetting service, so verification lives at the source.
+          l.sourceUrl && h('a', { class: 'lc-source', href: l.sourceUrl, target: '_blank', rel: 'noopener nofollow', onclick: visit, title: `Open this listing on ${l.source} to check current status` },
+            `Listed on ${l.source}. `, h('span', { class: 'lc-source-cta' }, 'Check current status')),
         ),
       ),
     ),

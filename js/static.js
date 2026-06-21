@@ -141,6 +141,9 @@ function openProfile(card) {
   const tel = q('.lc-btn--call')?.getAttribute('href') || '';
   const maps = q('.lc-btn[aria-label="Directions"]')?.getAttribute('href') || '';
   const web = q('.lc-btn[aria-label="Website"]')?.getAttribute('href') || '';
+  const srcEl = q('.lc-source');
+  const srcUrl = srcEl?.getAttribute('href') || '';
+  const srcName = (srcEl?.textContent.match(/Listed on (\w+)/) || [])[1] || '';
 
   const photoHTML = photo
     ? `<img class="profile-photo" src="${escH(photo)}" alt="${escH(name)}">`
@@ -166,6 +169,7 @@ function openProfile(card) {
       ${rateHTML}
       ${addr ? `<div class="profile-addr">${PIN}<span>${escH(addr)}</span></div>` : ''}
       <div class="profile-actions">${actions}</div>
+      ${srcUrl ? `<a class="profile-source" href="${escH(srcUrl)}" target="_blank" rel="noopener nofollow" data-visit>Listed on ${escH(srcName)}. <span class="lc-source-cta">Check current status</span></a>` : ''}
     </div>
   </div>`;
   const close = () => { back.remove(); document.removeEventListener('keydown', onKey); };

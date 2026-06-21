@@ -116,6 +116,7 @@ export const CITY_COUNTY = {
   loganville: 'Walton',
   ludowici: 'Long',
   mableton: 'Cobb',
+  luthersville: 'Meriwether',
   macon: 'Bibb',
   madison: 'Morgan',
   manchester: 'Meriwether',

@@ -263,6 +263,7 @@ function cardHTML(l, rank, extraClass = '', link = true) {
           <a class="lc-btn" href="${attr(mapsHref(l))}" target="_blank" rel="noopener" aria-label="Directions" title="Get directions" data-visit>${svg('navigation', 16)}<span>Directions</span></a>
           ${l.website ? `<a class="lc-btn" href="${attr(l.website)}" target="_blank" rel="noopener nofollow" aria-label="Website" title="Visit website" data-visit>${svg('globe', 16)}<span>Website</span></a>` : ''}
         </div>
+        ${l.sourceUrl ? `<a class="lc-source" href="${attr(l.sourceUrl)}" target="_blank" rel="noopener nofollow" data-visit title="Open this listing on ${attr(l.source)} to check current status">Listed on ${esc(l.source)}. <span class="lc-source-cta">Check current status</span></a>` : ''}
       </div>
     </div>
   </div>

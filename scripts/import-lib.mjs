@@ -71,6 +71,26 @@ function statusOf(r) {
 }
 const RANK_CLOSED = { open: 0, temporarily_closed: 1, permanently_closed: 2 };
 
+// Provenance: the public listing we scraped this row from, so a card can link
+// the reader back to verify the firm's CURRENT status (still open? moved?). Bing
+// rows carry a real "Bing Maps URL"; Google (Maps-Scraper-net) rows carry a
+// place id (ChIJ…, an 0x…:0x… cid, or a numeric cid) we rebuild into a Google
+// Maps link. Returns null when neither id is usable. Google is preferred at merge
+// time because Google Maps refreshes fastest and shows closures most plainly.
+function sourceOf(r) {
+  const id = `${r['ID'] || ''}`.trim();
+  if (/^ChIJ/.test(id) || /^0x[0-9a-f]+:0x[0-9a-f]+$/i.test(id))
+    return { source: 'Google', sourceUrl: `https://www.google.com/maps/place/?q=place_id:${id}` };
+  if (/^\d{8,}$/.test(id))
+    return { source: 'Google', sourceUrl: `https://www.google.com/maps?cid=${id}` };
+  const bingUrl = `${r['Bing Maps URL'] || ''}`.trim();
+  if (id.startsWith('ypid:') || /bing\.com/i.test(bingUrl)) {
+    const url = bingUrl || `https://www.bing.com/maps?q=${encodeURIComponent(`${r['Name'] || ''} ${r['Address'] || ''}`.trim())}`;
+    return { source: 'Bing', sourceUrl: url };
+  }
+  return null;
+}
+
 function pickEmail(raw) {
   for (const e of (raw || '').split(',').map((s) => s.trim())) {
     if (!e || e.includes('###') || JUNK_EMAIL.test(e) || JUNK_LOCAL.test(e)) continue;
@@ -188,6 +208,10 @@ export function buildStore(csvRows, fileCount, label = 'CSV') {
       // surface a closure reported by either source (most-closed wins)
       const st = statusOf(r);
       if (RANK_CLOSED[st] > RANK_CLOSED[keep.status || 'open']) keep.status = st === 'open' ? undefined : st;
+      // prefer the Google source link for the "check current status" button; only
+      // fall back to this row when the kept card has no provenance yet
+      const prov = sourceOf(r);
+      if (prov && (prov.source === 'Google' || !keep.sourceUrl)) { keep.source = prov.source; keep.sourceUrl = prov.sourceUrl; }
       stats.merged = (stats.merged || 0) + 1;
       continue;
     }
@@ -215,7 +239,10 @@ export function buildStore(csvRows, fileCount, label = 'CSV') {
       address: addr, phone: r['Phone'] || null, website: r['Website'] || null, email: pickEmail(r['Emails']),
       image: r['Featured image'] || null, hoursText: r['Open Hours'] || null,
       facebook: r['Facebook'] || null, instagram: r['Instagram'] || null, twitter: r['Twitter'] || null,
+      source: null, sourceUrl: null,
     };
+    const prov = sourceOf(r);
+    if (prov) { listing.source = prov.source; listing.sourceUrl = prov.sourceUrl; }
     const st = statusOf(r);
     if (st !== 'open') listing.status = st;   // only stamped when actually closed
     out.push(listing);

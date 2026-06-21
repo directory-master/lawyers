@@ -889,6 +889,18 @@ button:not(:disabled), [role="button"], a[href], label[for], summary,
 .lc-actions > .lc-btn:first-child:not(.lc-btn--call) span:not(.icon) { position: static; width: auto;
   height: auto; margin: 0; clip: auto; }
 
+/* Provenance line: a subtle link back to the public listing we aggregated, so a
+   reader can confirm the firm is still open. Quiet by design (we are a directory,
+   not a vetting service); the "Check current status" tail is the tappable cue. */
+.lc-source { display: inline-block; margin-top: 9px; font-size: 11.5px; font-weight: 600;
+  color: rgba(255,255,255,.62); text-shadow: 0 1px 8px rgba(0,0,0,.5); transition: color .15s; }
+.lc-source .lc-source-cta { color: var(--gilt-soft); text-decoration: underline;
+  text-underline-offset: 2px; }
+.lc-source:active { color: rgba(255,255,255,.85); }
+.profile-source { display: inline-block; margin-top: 14px; font-size: 12.5px; font-weight: 600;
+  color: var(--ink-2); }
+.profile-source .lc-source-cta { color: var(--ox); text-decoration: underline; text-underline-offset: 2px; }
+
 /* ── Top-five frames: each ranked card earns its own border + glow ────────── */
 .lc--rank1 .lc-card { border: 2px solid var(--gilt);
   box-shadow: 0 0 0 1px var(--gilt-soft), 0 10px 30px -8px rgba(168,137,60,.55), var(--card-shadow);
