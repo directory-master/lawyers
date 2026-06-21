@@ -783,6 +783,9 @@ button:not(:disabled), [role="button"], a[href], label[for], summary,
 .lc-tab--rank + .lc-tab--kind::before,
 .lc-tab--promoted::before { content: "·"; margin-right: 8px; color: rgba(255,255,255,.5); }
 .lc-tab--promoted { color: var(--gilt-soft); }
+/* business status (shown only when the scrape reports a closure) */
+.lc-tab--closed { background: #fff; color: #b3261e; padding: 1px 8px; border-radius: 5px;
+  font-size: 9.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
 
 .lc-save { flex-shrink: 0; width: 28px; height: 28px; border-radius: 8px; cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center;

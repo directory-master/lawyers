@@ -55,6 +55,22 @@ function aggRatings(ratings) {
   const rating = wden ? Math.round((wnum / wden) * 10) / 10 : null;
   return { rating, reviews };
 }
+// Business status from the scrape WHEN the source provides it: Google's
+// "Business Status" (OPERATIONAL / CLOSED_TEMPORARILY / CLOSED_PERMANENTLY), a
+// boolean "Permanently/Temporarily Closed" column, or a plain "Temporarily closed"
+// in the hours/status cell. Returns 'open' otherwise. NOTE: the current
+// Maps-Scraper-net / Bing dialects do NOT export this field, so everything reads
+// 'open' until the export includes it — this is the plumbing, ready for that data.
+function statusOf(r) {
+  const s = `${r['Business Status'] || r['Status'] || r['business_status'] || ''}`.toUpperCase();
+  const flag = (v) => /^(true|yes|1)$/i.test(`${v || ''}`.trim());
+  const h = `${r['Open Hours'] || ''}`.trim();
+  if (/PERMANENT/.test(s) || flag(r['Permanently Closed']) || /^permanently closed$/i.test(h)) return 'permanently_closed';
+  if (/TEMPORAR/.test(s) || flag(r['Temporarily Closed']) || /^temporarily closed$/i.test(h)) return 'temporarily_closed';
+  return 'open';
+}
+const RANK_CLOSED = { open: 0, temporarily_closed: 1, permanently_closed: 2 };
+
 function pickEmail(raw) {
   for (const e of (raw || '').split(',').map((s) => s.trim())) {
     if (!e || e.includes('###') || JUNK_EMAIL.test(e) || JUNK_LOCAL.test(e)) continue;
@@ -169,6 +185,9 @@ export function buildStore(csvRows, fileCount, label = 'CSV') {
       // if either source row was manually paid/verified, the merged card keeps it
       if (r.paid && !keep.paid) { keep.paid = true; keep.tier = r.tier || keep.tier; keep.paidAt = r.paidAt || keep.paidAt; keep.paidDays = r.paidDays || keep.paidDays; }
       if (r.verified && !keep.verified) { keep.verified = true; keep.barNo = keep.barNo || r.barNo; }
+      // surface a closure reported by either source (most-closed wins)
+      const st = statusOf(r);
+      if (RANK_CLOSED[st] > RANK_CLOSED[keep.status || 'open']) keep.status = st === 'open' ? undefined : st;
       stats.merged = (stats.merged || 0) + 1;
       continue;
     }
@@ -197,6 +216,8 @@ export function buildStore(csvRows, fileCount, label = 'CSV') {
       image: r['Featured image'] || null, hoursText: r['Open Hours'] || null,
       facebook: r['Facebook'] || null, instagram: r['Instagram'] || null, twitter: r['Twitter'] || null,
     };
+    const st = statusOf(r);
+    if (st !== 'open') listing.status = st;   // only stamped when actually closed
     out.push(listing);
     byKey.set(key, listing);
   }

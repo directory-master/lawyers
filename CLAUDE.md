@@ -127,6 +127,18 @@ keeps editable monetization fields (tier/paid/verified) — never un-pays a list
 The gate lives in [scripts/gate.mjs](scripts/gate.mjs) (shared by import + scan)
 and uses WORD-BOUNDARY matching so "law"/"legal" can't false-match "lawn"/"Lawrence".
 
+**Non-lawyer rejection (name + category).** Many non-law businesses carry
+"law"/"legal" in their NAME (so name-first inference matched), so the gate also
+checks the scraped **Category**: a `NON_LAWYER_CAT` list (accountants, tax
+preparers, insurance & real-estate agencies, private investigators, security
+guards, schools, financial advisors, government offices …) is rejected UNLESS the
+category itself names a lawyer (`CAT_IS_LAWYER`) or the NAME is unmistakably a law
+practice (`NAME_IS_LAWFIRM`, e.g. "… Law Firm"). `NAME_EXCLUDE` also drops
+government legal roles that aren't hireable: **District Attorney, Public
+Defender, Attorney General, Solicitor-General, Marshal's Office, law
+enforcement** training/agencies, child-support enforcement. This is why a CPA
+named "Smith Tax Law" or "DeKalb County District Attorney" never enters.
+
 **Two scraper sources, one card per firm.** Bing (`Bing_Maps_Scraper_*.csv`) and
 **Google (`Maps-Scraper-net_*.csv` — that IS the Google dialect)** both feed the
 same store; neither is a superset, so import both. The durable store keeps each

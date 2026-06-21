@@ -245,7 +245,7 @@ function cardHTML(l, rank, extraClass = '', link = true) {
   return `<article class="lc${rankCls}${extraClass ? ' ' + extraClass : ''}" style="--ring:${ringDur(l.id)}" data-listing-id="${attr(l.id)}" data-entity="${l.entity}" data-rating="${l.rating || 0}" data-reviews="${l.reviews || 0}"${coords}>
   <div class="lc-card">
     <div class="lc-band">
-      <div class="lc-tabs">${rank != null ? `<span class="lc-tab lc-tab--rank">No. ${rank}</span>` : ''}<span class="lc-tab lc-tab--kind">${kind}</span>${l.tier === 'premium' || l.tier === 'standard' ? `<span class="lc-tab lc-tab--promoted">Promoted</span>` : ''}</div>
+      <div class="lc-tabs">${rank != null ? `<span class="lc-tab lc-tab--rank">No. ${rank}</span>` : ''}<span class="lc-tab lc-tab--kind">${kind}</span>${l.tier === 'premium' || l.tier === 'standard' ? `<span class="lc-tab lc-tab--promoted">Promoted</span>` : ''}${l.status === 'temporarily_closed' ? `<span class="lc-tab lc-tab--closed">Temporarily closed</span>` : ''}${l.status === 'permanently_closed' ? `<span class="lc-tab lc-tab--closed">Permanently closed</span>` : ''}</div>
       <button class="lc-save" data-save-id="${attr(l.id)}" aria-pressed="false" aria-label="Save ${attr(l.name)}" title="Save">${svg('bookmark', 18)}</button>
     </div>
     <div class="lc-photo">

@@ -17,11 +17,22 @@ const SPECIFIC = CATEGORIES.filter(c => c.slug !== 'general-practice')
 const GENERAL = CATEGORIES.find(c => c.slug === 'general-practice');
 const GENERAL_RES = GENERAL.synonyms.map(wb);
 
-const NAME_EXCLUDE = /\b(bail bonds?|bondsman|process serv\w*|court(house|s)?|clerk of court|paralegal|legal document\w*|document prep\w*|form prep\w*|law school|notary|title pawn|insurance agency|real estate (agent|broker|agency)|realty|realtor)\b/i;
+const NAME_EXCLUDE = /\b(bail bonds?|bondsman|process serv\w*|court(house|s)?|clerk of court|paralegal|legal document\w*|document prep\w*|form prep\w*|law school|law enforcement|child support enforcement|district attorney|public defenders?|attorney general|solicitor.?general|marshal'?s? office|notary|title pawn|insurance agency|real estate (agent|broker|agency)|realty|realtor)\b/i;
 
 // Non-attorney legal-support businesses (paralegals, document/form-prep) are not
 // lawyers and must never enter the directory. The Bing Category is the clean tell.
 const CATEGORY_EXCLUDE = /\bparalegal\b/i;
+
+// Whole business TYPES that are never a law practice. Many such rows still carry
+// "law"/"legal" in their NAME (so name-first inference matched them), but the
+// scraped Category gives them away: accountants, tax preparers, insurance and real
+// estate agencies, government offices (incl. District Attorneys), private
+// investigators, security guards, schools, financial advisors, etc. Reject those
+// UNLESS the category itself names a lawyer (so a firm that also lists another
+// service survives) OR the NAME is unmistakably a law practice ("… Law Firm").
+const NON_LAWYER_CAT = /\b(tax preparation|tax consultant|certified public accountant|accountant|accounting firm|bookkeep\w*|insurance (agency|broker)|real estate|realtor|driving school|fingerprint\w*|notary public|process server|courier|marketing (agency|consultant)|private investigat\w*|security (guard|service)|training cent(er|re)|government office|financial (service|consultant|planner|advis\w+)|mediation service|divorce (service|coach\w*))\b/i;
+const CAT_IS_LAWYER = /\b(lawyer|attorney|law)\b/i;
+const NAME_IS_LAWFIRM = /\b(law (firm|office|offices|group)|attorneys? at law|esq|law (llc|pllc|p\.?c\.?))\b/i;
 
 // Well-known firms whose scraped Category is sometimes blank and whose brand name
 // carries no practice-area word, so name-first inference would otherwise miss them
@@ -66,6 +77,9 @@ export function isLawyerRow(r) {
   if (NAME_EXCLUDE.test(nm)) return false;
   const cat = r['Category'] || '';
   if (CATEGORY_EXCLUDE.test(cat)) return false;
+  // reject non-lawyer business types (by category) unless the category itself or
+  // the name says it's a law practice
+  if (NON_LAWYER_CAT.test(cat) && !CAT_IS_LAWYER.test(cat) && !NAME_IS_LAWFIRM.test(nm)) return false;
   return inferType(nm, cat) != null;
 }
 
