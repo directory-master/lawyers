@@ -125,7 +125,7 @@ export function buildStore(csvRows, fileCount, label = 'CSV') {
 
   // ─── build listings from the full durable store ────────────────────────────
   const stats = { files: fileCount, store: kept.length, added: addedToStore, pruned: prunedOff, nonGA: 0, off: 0, dupes: 0 };
-  const seenId = new Set(), seenKey = new Set(), byKey = new Map();
+  const seenId = new Set(), byKey = new Map();
   const out = [];
   for (const r of kept) {
     const id = r['ID'];
@@ -136,7 +136,15 @@ export function buildStore(csvRows, fileCount, label = 'CSV') {
     const nm = r['Name'] || '';
     const type = inferType(nm, r['Category'] || '');
     if (!type) { stats.off++; continue; }
-    const key = `${nm}|${addr}`.toLowerCase();
+    // Cross-source dedup: the SAME firm from Google and Bing arrives as two store
+    // rows with different scraper IDs and slightly different strings ("St" vs
+    // "Street", "&" vs "and"), so an exact name+address match misses them. Key on
+    // normalized name + phone instead, which collapses those into one card while
+    // NOT merging distinct entities that merely share an office line (a firm and an
+    // attorney) — the name guards that. Fall back to name+address when no phone.
+    const lnName = nm.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]/g, '');
+    const phoneKey = (r['Phone'] || '').replace(/[^0-9]/g, '').slice(-10);
+    const key = phoneKey ? `${lnName}|${phoneKey}` : `${lnName}|${addr.toLowerCase()}`;
     // this row's rating source(s); cloned so merging never mutates the store row
     const ratings = (r.ratings && r.ratings.length) ? [...r.ratings] : (ratingOf(r) ? [ratingOf(r)] : []);
     // Same firm re-scraped from a different tool (an old Bing row plus a fresh
@@ -144,7 +152,7 @@ export function buildStore(csvRows, fileCount, label = 'CSV') {
     // row. Don't drop it: union its rating sources into the listing we already
     // kept so Google reviews ADD to the running count and re-weight the stars, and
     // backfill any scraped field the first row was missing.
-    if (seenKey.has(key)) {
+    if (byKey.has(key)) {
       const keep = byKey.get(key);
       for (const rec of ratings) keep.ratings = mergeRating(keep.ratings, rec);
       Object.assign(keep, aggRatings(keep.ratings));
@@ -158,10 +166,12 @@ export function buildStore(csvRows, fileCount, label = 'CSV') {
       if (keep.lat == null) keep.lat = parseFloat(r['Latitude']) || null;
       if (keep.lng == null) keep.lng = parseFloat(r['Longitude']) || null;
       if (!keep.email) keep.email = pickEmail(r['Emails']);
+      // if either source row was manually paid/verified, the merged card keeps it
+      if (r.paid && !keep.paid) { keep.paid = true; keep.tier = r.tier || keep.tier; keep.paidAt = r.paidAt || keep.paidAt; keep.paidDays = r.paidDays || keep.paidDays; }
+      if (r.verified && !keep.verified) { keep.verified = true; keep.barNo = keep.barNo || r.barNo; }
       stats.merged = (stats.merged || 0) + 1;
       continue;
     }
-    seenKey.add(key);
 
     const cityName = cityNameFromAddr(addr);
     if (!cityName) { stats.noCity = (stats.noCity || 0) + 1; continue; }

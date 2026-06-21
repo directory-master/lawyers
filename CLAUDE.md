@@ -73,7 +73,7 @@ The generator auto-prunes orphaned page folders each run.
 | [js/lib/dom.js](js/lib/dom.js) | `h()` hyperscript + `mount`/`clear`/`frag`. The whole "framework". |
 | [js/lib/store.js](js/lib/store.js) | **The data brain.** Normalizes listings; selectors for city/county/zip/area; `top()` ranking; `groupByEntity` (firm vs attorney); `nearest()` (haversine). Pure data, no DOM — the generator can import it too. |
 | [js/lib/format.js](js/lib/format.js) | Display helpers (stars, phone, distance, hours). |
-| [js/components/card.js](js/components/card.js) | **The product** — the tier-gated lawyer card + claim sheet. |
+| [js/components/card.js](js/components/card.js) | **The product** — the tier-gated lawyer card (photo background + oxblood letterhead band, top-5 medal frames) + claim sheet. Tapping a card opens a profile **modal** (built from the card DOM in [js/static.js](js/static.js)); there are **no per-lawyer pages**. |
 | [js/data/city-centroids.js](js/data/city-centroids.js) | **AUTO-GENERATED** slug→{lat,lng} map; powers client-side "near me → your city". |
 | [js/data/categories.js](js/data/categories.js) | Practice-area taxonomy (11 areas × groups). `slug` = stable URL key; `synonyms` drive the import classifier. |
 | [js/data/ga-counties.js](js/data/ga-counties.js) | GA city→county map. Add a line per new city slug. |
@@ -112,9 +112,11 @@ tier earns.
 - Free cards show an **"Own this practice? Claim and upgrade"** CTA → in-page sheet
   → `mailto`. Claim/lead email goes to **`artivicolab@gmail.com`** — **never render
   that address as visible text** (mailto target only).
-- **Listing photos** come from the scrape (`l.image`, Bing thumbnail URLs) and show
-  on **every** listing that has one, with a graceful fallback to initials on load
-  error. 92/128 current listings have a photo.
+- **Listing photos** come from the scrape (`l.image`, Bing + Google thumbnail URLs)
+  and fill the card background on **every** listing that has one. Tiny thumbnails are
+  upscaled (`hiResImage` in [js/lib/format.js](js/lib/format.js)) so they don't blur,
+  and an initials panel sits behind every photo so a failed/missing image degrades to
+  initials, never a broken-image glyph.
 
 ## Adding listings
 
@@ -124,6 +126,18 @@ sanity) runs **at ingest**, so non-law rows never enter `data/cities/`. Re-impor
 keeps editable monetization fields (tier/paid/verified) — never un-pays a listing.
 The gate lives in [scripts/gate.mjs](scripts/gate.mjs) (shared by import + scan)
 and uses WORD-BOUNDARY matching so "law"/"legal" can't false-match "lawn"/"Lawrence".
+
+**Two scraper sources, one card per firm.** Bing (`Bing_Maps_Scraper_*.csv`) and
+**Google (`Maps-Scraper-net_*.csv` — that IS the Google dialect)** both feed the
+same store; neither is a superset, so import both. The durable store keeps each
+source's raw row separately, but when building `lawyers-imported.js` the importer
+**merges cross-source duplicates of the same firm** ([scripts/import-lib.mjs](scripts/import-lib.mjs)):
+it keys on **normalized name + phone** (not exact name+address, which missed "St"
+vs "Street" / "&" vs "and"), so Google + Bing rows for one firm collapse into a
+single card with **reviews pooled across sources** (Google + Yelp + Avvo …) and a
+review-weighted star rating (`aggRatings`). The name in the key guards against
+merging a firm and an attorney that merely share an office line. Paid/verified
+flags survive the merge (if either source row had them).
 
 **`~/Downloads` holds CSVs for several projects (contractors too).** To find and
 ingest only lawyer scrapes:
