@@ -970,14 +970,16 @@ button:not(:disabled), [role="button"], a[href], label[for], summary,
 .profile-close { position: absolute; top: 12px; right: 12px; z-index: 3; width: 34px; height: 34px;
   border-radius: 999px; border: none; display: grid; place-items: center; cursor: pointer; color: #fff;
   background: rgba(26,26,31,.5); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
-.profile-photo { display: block; width: 100%; height: 210px; object-fit: cover; object-position: top center;
+/* The modal shows the WHOLE image, never cropped. Landscape fills the width and
+   takes its natural height; portrait is capped by height instead (static.js tags
+   it .profile-photo--tall on load). A dark backdrop sits behind either letterbox. */
+.profile-photo { display: block; width: 100%; height: auto; min-height: 150px; max-height: 56vh;
+  object-fit: contain; background: #0e0e12; }
+.profile-photo--tall { width: auto; max-width: 100%; height: auto; min-height: 0; max-height: 62vh;
+  margin: 0 auto; }
+.profile-photo--ini { width: 100%; height: 210px; display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-serif); font-weight: 700; font-size: 76px; color: rgba(255,255,255,.18);
   background: linear-gradient(150deg, #2c2c36, var(--ink)); }
-/* Portrait photos show in full (contained, never cropped); the tall stage gets a
-   dark backdrop behind the letterboxed sides. Toggled by static.js on load. */
-.profile-photo--tall { height: 58vh; max-height: 480px; object-fit: contain; object-position: center;
-  background: #0e0e12; }
-.profile-photo--ini { display: flex; align-items: center; justify-content: center;
-  font-family: var(--font-serif); font-weight: 700; font-size: 76px; color: rgba(255,255,255,.18); }
 .profile-body { padding: 16px 18px 20px; }
 .profile-eyebrow { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
   color: var(--ox); }
