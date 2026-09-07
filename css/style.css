@@ -602,6 +602,12 @@ body.static { padding-bottom: var(--tabbar-h); }
 .cta-go { margin-left: auto; color: var(--gold-soft); display: inline-flex; }
 
 /* ── FAQ (home + listing pages) ─────────────────────────────────────────── */
+/* Reader facing "About" prose on listing pages: sits below the cards, styled
+   like the FAQ answers so it reads as part of the same editorial block. */
+.page-about { margin: 6px 0 18px; }
+.page-about p { font-size: 14.5px; line-height: 1.55; color: var(--label-2); margin: 0 0 10px; max-width: 72ch; }
+.page-about p:last-child { margin-bottom: 0; }
+.page-about a { color: var(--ox); font-weight: 600; }
 .faq { margin-top: 4px; }
 .faq-item { padding: 13px 0; border-top: 0.5px solid var(--separator); }
 .faq-item:first-child { border-top: none; }

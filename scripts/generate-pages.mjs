@@ -63,6 +63,18 @@ const stripArea = (name) => name.replace(/ (Lawyer|Attorney)$/, '');
 const hash = (s) => { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); };
 const pick = (seed, arr) => arr[hash(seed) % arr.length];
 const a_an = (w) => /^[aeiou]/i.test(w) ? 'an' : 'a';
+// <title> budget: Google shows ~60 chars. Keep the brand suffix only when the
+// whole thing still fits; otherwise the keyword core wins (og:site_name still
+// carries the brand on every page).
+const SITE_SUFFIX = ` | ${SITE}`;
+const mkTitle = (core) => core.length + SITE_SUFFIX.length <= 60 ? core + SITE_SUFFIX : core;
+const lc1 = (s) => s.charAt(0).toLowerCase() + s.slice(1);
+const joinList = (arr) => arr.length <= 1 ? arr.join('') : arr.slice(0, -1).join(', ') + ' and ' + arr[arr.length - 1];
+const para = (...ps) => ps.filter(Boolean).map(p => `<p>${p}</p>`).join('');
+// Cards rendered per page. Everything past the cap lives on the narrower pages
+// (city×area, ZIP, county), which keeps each URL light and focused instead of a
+// multi-megabyte dump of every card.
+const CAP = { city: 60, cityArea: 60, county: 60, zip: 40, area: 50 };
 // Count-aware truncation for the meta description / Google snippet (~155 chars).
 // Trims to the last full sentence within range, else the last whole word.
 const clamp = (s, max = 158) => {
@@ -195,6 +207,152 @@ const FACTS = {
 // intro), so they open with the searcher's words ("Find and compare the best…")
 // and the fact that matters most for that area. Other areas fall back to the
 // generic intro + FACTS.
+// Visible, reader facing prose for the statewide practice area pages. These
+// URLs carry most of our search impressions, so they need to read like a guide,
+// not a card dump. Plain facts about Georgia law, no advice, no endorsement.
+const AREA_PROSE = {
+  'personal-injury': (a) => para(
+    `Georgia gives most injury victims two years from the date of the injury to file a lawsuit (O.C.G.A. § 9-3-33). Claims against a city or county need a written notice much sooner, often within six or twelve months, so the date of the accident matters more than anything else on this page.`,
+    `Georgia follows modified comparative negligence. You can recover as long as you were less than 50 percent at fault, and your award is reduced by your share. Car and truck crashes, motorcycle wrecks, slip and fall injuries, dog bites, medical malpractice and wrongful death all fall under this area, and most of the ${nf(a.count)} lawyers listed here work on contingency, so the fee comes out of the recovery rather than your pocket.`,
+    `Compare firms by rating and review count, then look at how many of their reviews mention your kind of case. The city links below narrow this list to lawyers who actually practice near you.`,
+  ),
+  'criminal-defense': (a) => para(
+    `Georgia divides charges into misdemeanors, punishable by up to 12 months in jail, and felonies, which carry more than a year. Where a case is heard depends on the charge: traffic and ordinance cases in Municipal or Magistrate Court, most misdemeanors in State Court, and felonies in Superior Court.`,
+    `Timing matters. After a DUI arrest you have 30 days to request an administrative license hearing or install an ignition interlock, or the license suspension starts on its own. Georgia's First Offender Act can keep a first conviction off a public record when a judge allows it, and expungement (record restriction) is available for some outcomes.`,
+    `The ${nf(a.count)} criminal defense lawyers listed here handle DUI, drug possession, theft, assault, domestic violence, probation violations and traffic offenses. Many offer a free first consultation and flat fees for misdemeanors. Use the city links below to find one who appears regularly in the court where your case sits.`,
+  ),
+  'bankruptcy': (a) => para(
+    `Most Georgians file under Chapter 7, which wipes out unsecured debt such as credit cards and medical bills in a few months, or Chapter 13, which repays part of the debt through a three to five year plan and can stop a foreclosure or a car repossession. Whether Chapter 7 is open to you depends on the means test, which compares your household income to the Georgia median.`,
+    `Georgia has its own exemption list rather than the federal one. It protects a set amount of home equity, a vehicle, household goods, tools of the trade, retirement accounts and a wildcard amount. Filing triggers an automatic stay that halts collection calls, garnishments and lawsuits the same day.`,
+    `Cases are filed in the U.S. Bankruptcy Court for the Northern District (Atlanta, Gainesville, Newnan, Rome), Middle District (Macon, Columbus, Albany, Athens, Valdosta) or Southern District (Savannah, Augusta, Brunswick, Dublin, Waycross, Statesboro). The ${nf(a.count)} bankruptcy attorneys listed here are grouped by city below so you can find one who files in your division.`,
+  ),
+  'family-divorce': (a) => para(
+    `To file for divorce in Georgia, at least one spouse must have lived in the state for six months. Georgia is a no fault state, so most divorces cite an irretrievably broken marriage, and an uncontested divorce can be final about a month after the papers are served.`,
+    `Property is divided by equitable distribution, not a 50/50 split. Child support follows Georgia's income shares worksheet, custody is decided on the best interest of the child, and a child who is 14 or older can state a preference that the judge weighs. Family lawyers also handle legitimation for unmarried fathers, modifications, contempt actions and protective orders.`,
+    `The ${nf(a.count)} divorce and family lawyers here are ranked by rating and review volume. Use the city links below to find one who practices in your county's Superior Court, where family cases are heard.`,
+  ),
+  'estate-elder': (a) => para(
+    `A Georgia will must be signed by someone at least 14 years old in front of two witnesses. Wills are probated in the Probate Court of the county where the person lived, and Georgia has no state estate or inheritance tax. A basic plan usually adds a financial power of attorney and an advance directive for health care.`,
+    `Elder law attorneys handle guardianship and conservatorship, Medicaid planning for nursing home care, which looks back five years at transfers, and trusts that keep assets out of probate. Probate lawyers help executors with year's support, creditor claims and disputes between heirs.`,
+    `The ${nf(a.count)} estate and elder law practices listed here are sorted by rating. The city links below narrow the list to your area.`,
+  ),
+  'real-estate': (a) => para(
+    `Georgia is an attorney closing state: a licensed Georgia attorney must conduct the closing on a real estate purchase or refinance, examine title and disburse the funds. That attorney usually represents the lender, so buyers and sellers sometimes hire their own lawyer to review the contract.`,
+    `Real estate lawyers also handle title disputes and quiet title actions, boundary and easement fights, landlord and tenant matters, HOA disputes, commercial leases and construction claims. Adverse possession in Georgia takes 20 years, or seven under color of title.`,
+    `The ${nf(a.count)} real estate lawyers and closing attorneys listed here are ranked by rating and review volume. Use the city links below to find one near the property.`,
+  ),
+  'immigration': (a) => para(
+    `Immigration is federal law, so a Georgia immigration lawyer can help you no matter which county you live in. Most cases start with USCIS, whose Atlanta field office serves the whole state, and removal cases are heard at the Atlanta Immigration Court.`,
+    `Common matters include family petitions and green cards, naturalization, work visas such as H‑1B and L‑1, asylum, DACA renewals, waivers and deportation defense for people held at the Stewart and Folkston detention centers.`,
+    `The ${nf(a.count)} immigration lawyers here are ranked by rating and reviews. Many speak Spanish, Korean, Vietnamese or other languages; check the listing and ask when you call.`,
+  ),
+  'employment': (a) => para(
+    `Georgia is an at will state, so an employer can fire without cause, but not for an illegal reason. Discrimination, harassment and retaliation claims usually start with a charge at the EEOC, and in Georgia that charge must be filed within 180 days of the act.`,
+    `Employment lawyers also handle unpaid overtime and wage claims under the FLSA, severance review, non compete agreements under Georgia's Restrictive Covenants Act, whistleblower cases and workers' compensation, which is a separate system run by the State Board of Workers' Compensation.`,
+    `The ${nf(a.count)} employment lawyers listed here are ranked by rating. Many take strong cases on contingency; ask about fees in the first call.`,
+  ),
+  'social-security': (a) => para(
+    `Social Security Disability (SSDI) and Supplemental Security Income (SSI) are federal programs, so a Georgia disability lawyer can represent you at any stage. Most first applications are denied, and the case moves through reconsideration to a hearing before an administrative law judge.`,
+    `Disability lawyers gather medical records, work with your doctors on function reports and present your case at the hearing. Federal law caps their fee at a percentage of your back pay, and you pay nothing if you lose.`,
+    `The ${nf(a.count)} disability lawyers listed here are ranked by rating and reviews. Use the city links below to find one who appears at the hearing office nearest you.`,
+  ),
+  'tax-irs': (a) => para(
+    `Tax attorneys handle IRS audits, back taxes, liens and levies, wage garnishments, offers in compromise, installment agreements, innocent spouse relief and disputes with the Georgia Department of Revenue. Unlike a CPA, a tax attorney can represent you in U.S. Tax Court, where a petition must be filed within 90 days of a Notice of Deficiency.`,
+    `Conversations with a tax attorney are privileged, which matters when an audit could turn into a criminal referral. Many offer a free review of an IRS notice before you respond.`,
+    `The ${nf(a.count)} tax lawyers listed here are ranked by rating and review volume.`,
+  ),
+  'general-practice': (a) => para(
+    `A general practice lawyer handles everyday legal matters: contracts, small business questions, landlord and tenant disputes, wills, traffic tickets, name changes and civil claims in Magistrate Court, and can refer you to a specialist when a case needs one.`,
+    `In smaller Georgia towns the general practice attorney is often the only lawyer for miles, and many have decades of experience in the local courts. The ${nf(a.count)} listed here are ranked by rating and reviews and grouped by city below.`,
+  ),
+};
+
+// Local court facts per city, used for the visible "About" prose on city pages.
+// seat: is this the county seat. circuit: Georgia Superior Court judicial
+// circuit. fed: federal district + division. note: one extra local sentence.
+const CITY_NOTES = {
+  'brunswick': { seat: true, circuit: 'Brunswick', fed: 'Southern District of Georgia, Brunswick Division', note: 'Brunswick also has its own federal courthouse, so personal injury, maritime, criminal and bankruptcy matters from the whole Golden Isles area, including St. Simons Island and Jekyll Island, are handled by lawyers based here.' },
+  'cumming': { seat: true, circuit: 'Bell-Forsyth', fed: 'Northern District of Georgia, Gainesville Division', note: 'Forsyth County is one of the fastest growing counties in the state, and its lawyers see a heavy mix of real estate closings, divorce and custody cases, DUI and traffic matters from GA 400.' },
+  'gainesville': { seat: true, circuit: 'Northeastern', fed: 'Northern District of Georgia, Gainesville Division', note: 'Gainesville has a federal courthouse of its own and serves as the legal hub for Northeast Georgia, so lawyers here handle cases from Hall, Dawson, Lumpkin, White and Habersham counties. A number of firms serve Spanish speaking clients.' },
+  'dalton': { seat: true, circuit: 'Conasauga', fed: 'Northern District of Georgia, Rome Division', note: 'Dalton is the center of the carpet and flooring industry, so local lawyers handle a lot of workers’ compensation, immigration and employment matters alongside personal injury and family law.' },
+  'warner-robins': { seat: false, circuit: 'Houston', fed: 'Middle District of Georgia, Macon Division', note: 'Robins Air Force Base shapes the local practice: military divorce, security clearance issues, VA claims and personal injury cases involving service members are common here.' },
+  'decatur': { seat: true, circuit: 'Stone Mountain', fed: 'Northern District of Georgia, Atlanta Division', note: 'The DeKalb County Courthouse on the Decatur square is one of the busiest in Georgia, and many lawyers keep offices within walking distance of it.' },
+  'rome': { seat: true, circuit: 'Rome', fed: 'Northern District of Georgia, Rome Division', note: 'Rome has a federal courthouse and serves as the legal center of Northwest Georgia, drawing clients from Floyd, Polk, Chattooga, Gordon and Bartow counties.' },
+  'east-ellijay': { seat: false, circuit: 'Appalachian', fed: 'Northern District of Georgia, Gainesville Division', note: 'East Ellijay sits beside Ellijay, the Gilmer County seat, so the lawyers listed here serve the whole county and the surrounding mountain communities.' },
+  'ellijay': { seat: true, circuit: 'Appalachian', fed: 'Northern District of Georgia, Gainesville Division', note: 'Ellijay lawyers serve Gilmer County and the surrounding mountain communities, with a heavy share of real estate, estate planning and criminal matters.' },
+  'vidalia': { seat: false, circuit: 'Middle', fed: null, note: 'Vidalia is the largest city in Toombs County, whose courthouse is in Lyons a few miles away. Lawyers here also serve Montgomery, Tattnall and Treutlen counties.' },
+  'evans': { seat: false, circuit: 'Columbia', fed: 'Southern District of Georgia, Augusta Division', note: 'Columbia County got its own judicial circuit in 2021. Appling is the official county seat, but the county government center and most court business sit in Evans, and many Evans lawyers also practice in nearby Augusta.' },
+  'valdosta': { seat: true, circuit: 'Southern', fed: 'Middle District of Georgia, Valdosta Division', note: 'Valdosta has a federal courthouse and is the legal hub of South Georgia, serving Lowndes, Brooks, Echols and Lanier counties and the community around Moody Air Force Base.' },
+  'marietta': { seat: true, circuit: 'Cobb', fed: 'Northern District of Georgia, Atlanta Division', note: 'The Cobb County courts on the Marietta square are among the busiest in the state, and many firms keep offices along Roswell Street and Washington Avenue nearby.' },
+  'atlanta': { seat: true, circuit: 'Atlanta', fed: 'Northern District of Georgia, Atlanta Division', note: 'Atlanta is also home to the Supreme Court of Georgia, the Court of Appeals, the Richard B. Russell federal courthouse and the Atlanta Immigration Court, so nearly every kind of legal practice is represented here.' },
+  'savannah': { seat: true, circuit: 'Eastern', fed: 'Southern District of Georgia, Savannah Division', note: 'Savannah lawyers handle a wide mix of port and maritime work, personal injury, criminal defense and real estate for the coastal counties.' },
+  'augusta': { seat: true, circuit: 'Augusta', fed: 'Southern District of Georgia, Augusta Division', note: 'Augusta has a federal courthouse and serves the Central Savannah River Area, including Columbia County and the South Carolina side of the river for federal matters.' },
+  'macon': { seat: true, circuit: 'Macon', fed: 'Middle District of Georgia, Macon Division', note: 'Macon is the seat of the Middle District of Georgia, so federal criminal, civil rights and bankruptcy matters for Central Georgia are heard here.' },
+  'columbus': { seat: true, circuit: 'Chattahoochee', fed: 'Middle District of Georgia, Columbus Division', note: 'Columbus lawyers serve Muscogee and the surrounding counties, and the community around Fort Moore, with a strong share of military family and personal injury work.' },
+  'athens': { seat: true, circuit: 'Western', fed: 'Middle District of Georgia, Athens Division', note: 'Athens has a federal courthouse and a large student population, so criminal defense, landlord and tenant and personal injury matters are common here.' },
+  'alpharetta': { seat: false, circuit: 'Atlanta', fed: 'Northern District of Georgia, Atlanta Division', note: 'Alpharetta is in North Fulton County; Superior and State Court cases are heard in downtown Atlanta, while many routine matters go through the North Fulton annex and the Alpharetta Municipal Court.' },
+  'lawrenceville': { seat: true, circuit: 'Gwinnett', fed: 'Northern District of Georgia, Atlanta Division', note: 'The Gwinnett Justice and Administration Center in Lawrenceville houses the county’s Superior, State, Magistrate and Probate courts, and most Gwinnett firms keep an office nearby.' },
+  'canton': { seat: true, circuit: 'Blue Ridge', fed: 'Northern District of Georgia, Atlanta Division', note: 'The Cherokee County Justice Center in Canton hears cases from Woodstock, Holly Springs, Ball Ground and the rest of the county.' },
+  'woodstock': { seat: false, circuit: 'Blue Ridge', fed: 'Northern District of Georgia, Atlanta Division', note: 'Woodstock cases are heard at the Cherokee County Justice Center in Canton, about ten miles north, and most Woodstock lawyers practice in both cities.' },
+  'roswell': { seat: false, circuit: 'Atlanta', fed: 'Northern District of Georgia, Atlanta Division', note: 'Roswell is in North Fulton County, so felony and major civil cases go to the Fulton County courts in Atlanta while traffic and ordinance cases stay in Roswell Municipal Court.' },
+  'albany': { seat: true, circuit: 'Dougherty', fed: 'Middle District of Georgia, Albany Division', note: 'Albany has a federal courthouse and is the legal center of Southwest Georgia, serving Dougherty, Lee, Worth, Terrell and Mitchell counties.' },
+  'statesboro': { seat: true, circuit: 'Ogeechee', fed: 'Southern District of Georgia, Statesboro Division', note: 'Statesboro has a federal courthouse and serves Bulloch, Effingham, Jenkins and Screven counties, plus a large Georgia Southern student population.' },
+  'douglasville': { seat: true, circuit: 'Douglas', fed: 'Northern District of Georgia, Atlanta Division', note: 'Douglas County has its own judicial circuit, and its courthouse in Douglasville hears cases from across the county.' },
+  'stockbridge': { seat: false, circuit: 'Flint', fed: 'Northern District of Georgia, Atlanta Division', note: 'Stockbridge is in Henry County; cases are heard at the courthouse in McDonough, and most Stockbridge lawyers practice in both cities.' },
+  'mcdonough': { seat: true, circuit: 'Flint', fed: 'Northern District of Georgia, Atlanta Division', note: 'The Henry County courts on the McDonough square serve Stockbridge, Hampton and Locust Grove as well.' },
+  'pooler': { seat: false, circuit: 'Eastern', fed: 'Southern District of Georgia, Savannah Division', note: 'Pooler is in Chatham County; cases are heard in Savannah, and most Pooler lawyers also serve Savannah, Richmond Hill and Effingham County.' },
+  'toccoa': { seat: true, circuit: 'Mountain', fed: 'Northern District of Georgia, Gainesville Division', note: 'Toccoa lawyers serve Stephens County and the neighboring mountain counties of Habersham and Rabun.' },
+  'stone-mountain': { seat: false, circuit: 'Stone Mountain', fed: 'Northern District of Georgia, Atlanta Division', note: 'Stone Mountain is in DeKalb County; cases are heard at the DeKalb County Courthouse in Decatur, and the judicial circuit carries the city’s name.' },
+  'swainsboro': { seat: true, circuit: 'Middle', fed: 'Southern District of Georgia, Statesboro Division', note: 'Swainsboro lawyers serve Emanuel County and the surrounding rural counties, handling family, criminal, real estate and estate matters in the local courts.' },
+  'thomson': { seat: true, circuit: 'Toombs', fed: 'Southern District of Georgia, Augusta Division', note: 'Thomson lawyers serve McDuffie County and often practice in nearby Augusta as well.' },
+  'tucker': { seat: false, circuit: 'Stone Mountain', fed: 'Northern District of Georgia, Atlanta Division', note: 'Tucker is in DeKalb County; cases go to the DeKalb courts in Decatur. Several Tucker firms focus on immigration for the area’s large immigrant community.' },
+  'duluth': { seat: false, circuit: 'Gwinnett', fed: 'Northern District of Georgia, Atlanta Division', note: 'Duluth is in Gwinnett County; cases are heard in Lawrenceville. Many Duluth lawyers serve Korean, Chinese and Spanish speaking clients.' },
+  'norcross': { seat: false, circuit: 'Gwinnett', fed: 'Northern District of Georgia, Atlanta Division', note: 'Norcross is in Gwinnett County; cases are heard in Lawrenceville, and many Norcross firms serve Spanish speaking clients.' },
+  'kennesaw': { seat: false, circuit: 'Cobb', fed: 'Northern District of Georgia, Atlanta Division', note: 'Kennesaw is in Cobb County; cases are heard in Marietta, and most Kennesaw lawyers also practice there.' },
+  'smyrna': { seat: false, circuit: 'Cobb', fed: 'Northern District of Georgia, Atlanta Division', note: 'Smyrna is in Cobb County; cases are heard in Marietta.' },
+  'sandy-springs': { seat: false, circuit: 'Atlanta', fed: 'Northern District of Georgia, Atlanta Division', note: 'Sandy Springs is in North Fulton County; Superior and State Court cases are heard in downtown Atlanta.' },
+  'newnan': { seat: true, circuit: 'Coweta', fed: 'Northern District of Georgia, Newnan Division', note: 'Newnan has a federal courthouse and serves Coweta, Carroll, Heard, Meriwether and Troup counties.' },
+  'griffin': { seat: true, circuit: 'Griffin', fed: 'Northern District of Georgia, Atlanta Division', note: 'The Griffin Judicial Circuit covers Spalding, Fayette, Pike and Upson counties, so Griffin lawyers often appear in Fayetteville and Thomaston as well.' },
+  'carrollton': { seat: true, circuit: 'Coweta', fed: 'Northern District of Georgia, Newnan Division', note: 'Carrollton lawyers serve Carroll County and the University of West Georgia community.' },
+  'lagrange': { seat: true, circuit: 'Coweta', fed: 'Northern District of Georgia, Newnan Division', note: 'LaGrange lawyers serve Troup County and the area around West Point and the Kia plant.' },
+  'conyers': { seat: true, circuit: 'Rockdale', fed: 'Northern District of Georgia, Atlanta Division', note: 'Rockdale County has its own judicial circuit, and its courthouse in Conyers serves the whole county.' },
+  'covington': { seat: true, circuit: 'Alcovy', fed: 'Northern District of Georgia, Atlanta Division', note: 'The Alcovy Judicial Circuit covers Newton and Walton counties, so Covington lawyers often appear in Monroe as well.' },
+  'jonesboro': { seat: true, circuit: 'Clayton', fed: 'Northern District of Georgia, Atlanta Division', note: 'The Clayton County courts in Jonesboro serve Morrow, Riverdale, Forest Park and the airport area.' },
+  'hinesville': { seat: true, circuit: 'Atlantic', fed: 'Southern District of Georgia, Savannah Division', note: 'Fort Stewart shapes the local practice: military divorce, family law and personal injury cases involving soldiers are common in Hinesville.' },
+  'tifton': { seat: true, circuit: 'Tifton', fed: 'Middle District of Georgia, Valdosta Division', note: 'Tifton lawyers serve Tift, Irwin, Turner and Worth counties in the heart of South Georgia farm country.' },
+  'moultrie': { seat: true, circuit: 'Southern', fed: 'Middle District of Georgia, Valdosta Division', note: 'Moultrie lawyers serve Colquitt County and often practice in nearby Thomasville and Valdosta.' },
+  'thomasville': { seat: true, circuit: 'Southern', fed: 'Middle District of Georgia, Valdosta Division', note: 'Thomasville lawyers serve Thomas County and the Georgia side of the Tallahassee area.' },
+  'waycross': { seat: true, circuit: 'Waycross', fed: 'Southern District of Georgia, Waycross Division', note: 'Waycross has a federal courthouse and serves Ware, Pierce, Brantley, Charlton and Bacon counties.' },
+  'milledgeville': { seat: true, circuit: 'Ocmulgee', fed: 'Middle District of Georgia, Macon Division', note: 'Milledgeville lawyers serve Baldwin County and the Lake Oconee and Lake Sinclair communities.' },
+  'dublin': { seat: true, circuit: 'Dublin', fed: 'Southern District of Georgia, Dublin Division', note: 'Dublin has a federal courthouse and serves Laurens, Johnson, Treutlen and Twiggs counties.' },
+  'cartersville': { seat: true, circuit: 'Cherokee', fed: 'Northern District of Georgia, Rome Division', note: 'The Cherokee Judicial Circuit, despite the name, covers Bartow and Gordon counties, with the courthouse in Cartersville.' },
+  'dawsonville': { seat: true, circuit: 'Northeastern', fed: 'Northern District of Georgia, Gainesville Division', note: 'Dawsonville lawyers serve Dawson County and often practice in Gainesville and Cumming as well.' },
+  'fayetteville': { seat: true, circuit: 'Griffin', fed: 'Northern District of Georgia, Atlanta Division', note: 'The Fayette County courts in Fayetteville serve Peachtree City and Tyrone as well.' },
+  'peachtree-city': { seat: false, circuit: 'Griffin', fed: 'Northern District of Georgia, Atlanta Division', note: 'Peachtree City is in Fayette County; cases are heard in Fayetteville a few miles away.' },
+  'americus': { seat: true, circuit: 'Southwestern', fed: 'Middle District of Georgia, Americus Division', note: 'Americus lawyers serve Sumter County and the surrounding rural counties of Southwest Georgia.' },
+  'cordele': { seat: true, circuit: 'Cordele', fed: null, note: 'Cordele lawyers serve Crisp County and the I‑75 corridor through South Georgia.' },
+  'villa-rica': { seat: false, circuit: 'Coweta', fed: 'Northern District of Georgia, Newnan Division', note: 'Villa Rica straddles Carroll and Douglas counties, so its lawyers appear in both Carrollton and Douglasville. Real estate closings and title work are a large part of the local practice.' },
+  'bremen': { seat: false, circuit: 'Tallapoosa', fed: 'Northern District of Georgia, Rome Division', note: 'Bremen is in Haralson County; cases are heard in Buchanan, and local lawyers handle a lot of real estate and title work.' },
+  'clayton': { seat: true, circuit: 'Mountain', fed: 'Northern District of Georgia, Gainesville Division', note: 'Clayton lawyers serve Rabun County and the Northeast Georgia mountains.' },
+  'monroe': { seat: true, circuit: 'Alcovy', fed: 'Northern District of Georgia, Atlanta Division', note: 'Monroe lawyers serve Walton County and often appear in Covington as part of the Alcovy circuit.' },
+  'flowery-branch': { seat: false, circuit: 'Northeastern', fed: 'Northern District of Georgia, Gainesville Division', note: 'Flowery Branch is in Hall County; cases are heard in Gainesville, and most local lawyers practice there too.' },
+};
+function cityProse(c, g, areas, tp, avg) {
+  const n = CITY_NOTES[c.slug] || {};
+  const county = c.county ? `${c.county} County` : null;
+  const where = county
+    ? (n.seat ? `${c.name} is the county seat of ${county}, so the county’s Superior, State, Magistrate and Probate courts sit here` : `${c.name} is in ${county}, and most cases are heard at the ${county} courthouse`)
+    : `${c.name} is in Georgia`;
+  const circuit = n.circuit ? `, part of the ${n.circuit} Judicial Circuit` : '';
+  const fed = n.fed ? ` Federal cases go to the U.S. District Court for the ${n.fed}.` : '';
+  const mix = areas.slice(0, 5).map(x => `${stripArea(x.a.name).toLowerCase()} (${nf(x.list.length)})`);
+  return para(
+    `${where}${circuit}.${fed}${n.note ? ' ' + n.note : ''}`,
+    `We list ${nf(c.count)} lawyers and law firms in ${c.name}: ${nf(g.firm.length)} ${g.firm.length === 1 ? 'firm' : 'firms'} and ${nf(g.attorney.length)} solo ${g.attorney.length === 1 ? 'attorney' : 'attorneys'}${mix.length ? `, with the most practicing ${joinList(mix)}` : ''}.${avg ? ` Together they average ${avg.toFixed(1)} stars from public reviews.` : ''}${tp && tp.rating ? ` ${tp.name} currently holds the top spot with ${tp.rating.toFixed(1)} stars${tp.reviews ? ` across ${nf(tp.reviews)} reviews` : ''}.` : ''}`,
+    `Rankings come from published ratings and review counts, not from us. Call, get directions or open a firm’s website straight from its card, and use the practice area links to narrow the list to your kind of case.`,
+  );
+}
+
 const AREA_LEDE = {
   'personal-injury': (a) => `Find and compare the best personal injury lawyers in Georgia. We list ${nf(a.count)} injury and accident attorneys statewide, from established law firms to solo practitioners, with ratings, real reviews, and one tap to call. Most work on contingency, so you pay no fee unless they win your case.`,
   'criminal-defense': (a) => `Find and compare the best criminal defense lawyers in Georgia. We list ${nf(a.count)} criminal defense attorneys statewide, with ratings, reviews, and one tap to call. Many offer a free first consultation, and acting quickly gives your defense the most room to work.`,
@@ -205,12 +363,26 @@ const faqLd = (faq) => ({ '@type': 'FAQPage', mainEntity: faq.map(f => ({ '@type
 
 const sitemap = [];
 const written = new Set();
+// Previous sitemap lastmod per URL, so a page whose HTML did not change keeps
+// its old date instead of every URL claiming "modified today" on each build
+// (Google learns to ignore a lastmod that always moves).
+const PREV_LASTMOD = new Map();
+try {
+  for (const m of readFileSync(join(ROOT, 'sitemap.xml'), 'utf8').matchAll(/<loc>([^<]+)<\/loc><lastmod>([^<]+)<\/lastmod>/g)) PREV_LASTMOD.set(m[1], m[2]);
+} catch { /* first build */ }
+const writeIfChanged = (file, html) => {
+  let prev = null;
+  try { prev = readFileSync(file, 'utf8'); } catch { /* new */ }
+  if (prev === html) return false;
+  writeFileSync(file, html);
+  return true;
+};
 const out = (urlPath, html, { index = true, priority = 0.5 } = {}) => {
   const clean = urlPath.replace(/^\/?/, '').replace(/\/?$/, '');
   written.add(clean);
   mkdirSync(join(ROOT, clean), { recursive: true });
-  writeFileSync(join(ROOT, clean, 'index.html'), html);
-  if (index) sitemap.push({ loc: ORIGIN + '/' + clean + '/', priority });
+  const changed = writeIfChanged(join(ROOT, clean, 'index.html'), html);
+  if (index) sitemap.push({ loc: ORIGIN + '/' + clean + '/', priority, changed });
 };
 
 // ─── markup ────────────────────────────────────────────────────────────────────
@@ -459,16 +631,17 @@ const itemListLd = (listings, pageUrl) => ({
 const crumbLd = (crumbs) => ({ '@type': 'BreadcrumbList', itemListElement: crumbs.map((c, i) => ({ '@type': 'ListItem', position: i + 1, name: c.name, item: ORIGIN + c.href })) });
 
 // ─── listing page ──────────────────────────────────────────────────────────────
-function listingPage({ urlPath, title, desc, h1, sub, eyebrow, intro, breadcrumbs, listings, sections = [], faq = [], index = true, priority = 0.5, geo = null, notice = '', nearby = null, listTitle = null, controls = true, cap = null }) {
+function listingPage({ urlPath, title, desc, h1, sub, eyebrow, intro, breadcrumbs, listings, sections = [], faq = [], index = true, priority = 0.5, geo = null, notice = '', nearby = null, listTitle = null, controls = true, cap = null, about = null, capNote = null }) {
   const canonical = ORIGIN + '/' + urlPath.replace(/\/?$/, '/');
   const ranked = top(listings, 10);            // top 10 still feeds the ItemList structured data
   const sorted = [...listings].sort(byRank);   // one ranked list for the page (no "Top 10" split)
   const all = cap ? sorted.slice(0, cap) : sorted;   // cap big leaderboards (full list lives on the city/area pages)
   const SHOW = 20;                             // visible before "show more"; the rest stay crawlable
   const g = groupEntity(listings);
-  // The descriptive intro now lives in the page header (see pageShell); the
-  // Google snippet is a count-aware (~155 char) cut of that same prose.
-  const metaDesc = intro ? clamp(intro, 158) : desc;
+  // The snippet is the hand written, search intent description; the longer
+  // intro only backs it up when a page has none.
+  const metaDesc = desc ? clamp(desc, 158) : clamp(intro, 158);
+  const aboutHTML = about && about.html ? `<section class="page-about"><div class="section-head"><h2 class="section-title">${esc(about.title)}</h2></div>${about.html}</section>` : '';
   const body = `
 <div class="stat-row">
   <div class="stat"><div class="stat-num">${nf(listings.length)}</div><div class="stat-label">Listings</div></div>
@@ -478,18 +651,20 @@ function listingPage({ urlPath, title, desc, h1, sub, eyebrow, intro, breadcrumb
 ${notice}
 ${promoSlots()}
 ${controls && listings.length > 1 ? segmentedHTML(listings) : ''}
-<div class="section-head"><h2 class="section-title">${esc(listTitle || `Top ${nf(listings.length)} ${h1}`)}</h2></div>
+<div class="section-head"><h2 class="section-title">${esc(listTitle || `Top rated ${lc1(h1)}`)}</h2></div>
 <p class="rank-note">Ranked by rating and review volume from public sources. Paid placements are marked Promoted. <a href="/rankings/">How we rank</a></p>
 <div class="card-list" data-more-list>${all.map((l, i) => cardHTML(l, i + 1, i >= SHOW ? 'card--collapsed' : '')).join('\n')}</div>
 ${all.length > SHOW ? `<button class="more-btn" data-more-btn>Show ${Math.min(20, all.length - SHOW)} more lawyers</button>` : ''}
-${cap && sorted.length > cap ? `<p class="rank-note">Showing the top ${nf(cap)} of ${nf(sorted.length)}. Browse by practice area or city for the full ranked list.</p>` : ''}
+${cap && sorted.length > cap ? `<p class="rank-note">Showing the top ${nf(cap)} of ${nf(sorted.length)}. ${capNote || 'Browse by practice area or city for the full ranked list.'}</p>` : ''}
 ${nearby && nearby.listings.length ? `<div class="section-head"><h2 class="section-title">More lawyers near ${esc(nearby.name)}</h2><span class="section-tagline">From the closest Georgia cities</span></div>
 <div class="card-list">${nearby.listings.map(l => cardHTML(l, null)).join('\n')}</div>` : ''}
+${aboutHTML}
 ${sections.join('\n')}
 ${faq.length ? dl(faq) : ''}
 `;
+  // No FAQPage schema: Google stopped showing FAQ rich results for sites like
+  // this in 2023, so it was dead weight. The FAQ stays as visible HTML.
   const graph = [{ '@type': 'CollectionPage', name: title, description: metaDesc, url: canonical }, crumbLd(breadcrumbs), itemListLd(ranked, canonical)];
-  if (faq.length) graph.push(faqLd(faq));
   out(urlPath, pageShell({ title, desc: metaDesc, canonical, h1, sub, eyebrow, intro, breadcrumbs, jsonld: { '@context': 'https://schema.org', '@graph': graph }, body, index, geo, tab: urlPath.startsWith('area/') ? 'areas' : 'browse' }), { index, priority });
 }
 
@@ -523,15 +698,18 @@ for (const c of CITIES) {
     linkSection(`Lawyers near ${c.name}`, near.map(n => chip(`/${n.slug}/`, n.name, n.count))),
     c.countySlug ? linkSection('In the county', [chip(`/county/${c.countySlug}/`, `${c.county} County`, c.count)]) : '',
   ].filter(Boolean);
+  const areaWords = areas.slice(0, 4).map(x => stripArea(x.a.name).toLowerCase());
   listingPage({
     urlPath: c.slug,
-    title: `${nf(c.count)} Lawyers in ${c.name}, GA | Top Rated Law Firms (${YEAR}) | ${SITE}`,
-    desc: `Compare ${nf(c.count)} lawyers and law firms in ${c.name}, Georgia. Ratings, reviews, practice areas, and direct contact. Updated ${YEAR}.`,
+    title: mkTitle(`Lawyers in ${c.name}, GA | Top Law Firms and Attorneys (${YEAR})`),
+    desc: `Compare ${nf(c.count)} ${c.name}, GA lawyers and law firms by rating and reviews.${areaWords.length ? ` ${areaWords.map((w, i) => i ? w : w.charAt(0).toUpperCase() + w.slice(1)).join(', ')} and more.` : ''}`,
     h1: `Lawyers in ${c.name}, GA`, sub: c.county ? `${c.county} County · ${nf(c.count)} listings` : `${nf(c.count)} listings`,
     eyebrow: c.county ? `${c.county} County, Georgia` : 'Georgia',
     intro, breadcrumbs: [{ name: 'Home', href: '/' }, { name: 'Cities', href: '/directory/' }, { name: c.name, href: `/${c.slug}/` }],
     listings: c.listings, sections, faq, index: c.count >= MIN_INDEX, priority: 0.8, geo: { placename: `${c.name}, GA`, ...(CITY_CENT.get(c.slug) || {}) }, notice,
     nearby: (() => { const fill = nearbyFill(c.slug, c.count); return fill.length ? { name: c.name, listings: fill } : null; })(),
+    cap: CAP.city, capNote: 'The practice area links below carry the full ranked list for each kind of case.',
+    about: { title: `About lawyers in ${c.name}`, html: cityProse(c, g, areas, tp, avg) },
   });
   for (const { a, list } of areas) {
     const at = top(list, 1)[0], short = stripArea(a.name);
@@ -546,16 +724,22 @@ for (const c of CITIES) {
       at && at.rating ? { q: `Who is a top ${short.toLowerCase()} lawyer in ${c.name}?`, a: `${at.name} is among the highest rated ${short.toLowerCase()} practices serving ${c.name}, with ${at.rating.toFixed(1)} stars${at.reviews ? ` across ${at.reviews} reviews` : ''}.` } : null,
       { q: `How do I choose ${a_an(short)} ${short.toLowerCase()} lawyer in ${c.name}?`, a: `Compare ratings and reviews, confirm the lawyer handles ${a.group.toLowerCase()} matters, and ask about experience and fees in a first consultation. This page lists ${nf(list.length)} option${list.length === 1 ? '' : 's'} in ${c.name}.` },
     ].filter(Boolean);
+    const cn = CITY_NOTES[c.slug] || {};
+    const local = c.county
+      ? `${c.name} is in ${c.county} County${cn.circuit ? `, part of the ${cn.circuit} Judicial Circuit` : ''}, so ${a.group.toLowerCase()} cases from ${c.name} are heard in the ${c.county} County courts${cn.seat ? ' here in town' : ''}.${cn.fed && ['bankruptcy', 'immigration', 'social-security', 'tax-irs', 'employment'].includes(a.slug) ? ` Federal matters go to the ${cn.fed}.` : ''}`
+      : '';
     listingPage({
       urlPath: `${c.slug}/${a.slug}`,
-      title: `Top ${a.name}s in ${c.name}, GA (${YEAR}) | ${SITE}`,
-      desc: `Compare ${nf(list.length)} ${a.name.toLowerCase()}${list.length === 1 ? '' : 's'} in ${c.name}, Georgia. Ratings, reviews, and direct contact. Updated ${YEAR}.`,
+      title: mkTitle(`${c.name}, GA ${short} Lawyers | Top Rated (${YEAR})`),
+      desc: `Compare ${nf(list.length)} ${short.toLowerCase()} ${list.length === 1 ? 'lawyer' : 'lawyers'} in ${c.name}, GA by rating and reviews.${at && at.rating ? ` ${at.name} leads with ${at.rating.toFixed(1)} stars.` : ''} Call or visit their site from the listing.`,
       h1: `${a.name}s in ${c.name}, GA`, sub: `${nf(list.length)} listing${list.length === 1 ? '' : 's'} · ${c.name}`,
       eyebrow: `${c.name}, GA`,
       intro: aIntro, breadcrumbs: [{ name: 'Home', href: '/' }, { name: c.name, href: `/${c.slug}/` }, { name: short, href: `/${c.slug}/${a.slug}/` }],
       listings: list,
       sections: [linkSection('Related', [chip(`/${c.slug}/`, `All ${c.name} lawyers`, c.count), chip(`/area/${a.slug}/`, `${short} statewide`, a.count), ...near.slice(0, 3).map(n => chip(`/${n.slug}/${a.slug}/`, `${short} in ${n.name}`))])],
       faq: aFaq, index: list.length >= MIN_INDEX, priority: 0.6, geo: { placename: `${c.name}, GA`, ...(CITY_CENT.get(c.slug) || {}) },
+      cap: CAP.cityArea, capNote: `See all ${c.name} lawyers or the statewide ${short.toLowerCase()} list for the rest.`,
+      about: { title: `About ${short.toLowerCase()} lawyers in ${c.name}`, html: para(local, FACTS[a.slug], `We list ${nf(list.length)} ${short.toLowerCase()} ${list.length === 1 ? 'practice' : 'practices'} serving ${c.name}, ranked by published ratings and review counts.${at && at.rating ? ` ${at.name} currently ranks first with ${at.rating.toFixed(1)} stars${at.reviews ? ` from ${nf(at.reviews)} reviews` : ''}.` : ''} Compare a few, then ask each about fees and a first consultation.`) },
     });
   }
 }
@@ -570,17 +754,25 @@ for (const c of COUNTIES) {
     { q: `Which cities in ${c.name} County have lawyers listed?`, a: `${cities.slice(0, 8).map(ci => `${ci.name} (${ci.count})`).join(', ')}${cities.length > 8 ? ', and more' : ''}.` },
     tp && tp.rating ? { q: `Who is a top rated lawyer in ${c.name} County?`, a: `${tp.name} in ${tp.cityName} is among the highest rated, with ${tp.rating.toFixed(1)} stars${tp.reviews ? ` across ${tp.reviews} reviews` : ''}.` } : null,
   ].filter(Boolean);
+  const seat = cities.find(ci => (CITY_NOTES[ci.slug] || {}).seat);
+  const seatNote = seat ? CITY_NOTES[seat.slug] : null;
   listingPage({
     urlPath: `county/${c.slug}`,
-    title: `Lawyers in ${c.name} County, GA | ${nf(c.count)} Law Firms and Attorneys (${YEAR}) | ${SITE}`,
-    desc: `Find a lawyer in ${c.name} County, Georgia. ${nf(c.count)} law firms and attorneys across ${nf(cities.length)} ${cities.length === 1 ? 'city' : 'cities'}, ranked by rating. Updated ${YEAR}.`,
+    title: mkTitle(`Lawyers in ${c.name} County, GA | Top Attorneys (${YEAR})`),
+    desc: `Compare ${nf(c.count)} lawyers and law firms across ${c.name} County, GA by city, practice area, rating and reviews. ${cities.slice(0, 3).map(ci => ci.name).join(', ')} and more.`,
     h1: `Lawyers in ${c.name} County, GA`, sub: `${nf(c.count)} listings · ${nf(cities.length)} ${cities.length === 1 ? 'city' : 'cities'}`,
     eyebrow: 'Georgia',
-    intro: `Find a lawyer anywhere in ${c.name} County, Georgia. We list ${nf(c.count)} law firms and attorneys across ${nf(cities.length)} ${cities.length === 1 ? 'city' : 'cities'}, ranked by rating and review volume, with one tap to call or get directions.`,
+    intro: `Find a lawyer anywhere in ${c.name} County, Georgia. We list ${nf(c.count)} law firms and attorneys across ${nf(cities.length)} ${cities.length === 1 ? 'city' : 'cities'}, ranked by rating and review volume.`,
     breadcrumbs: [{ name: 'Home', href: '/' }, { name: 'Counties', href: '/directory/#counties' }, { name: `${c.name} County`, href: `/county/${c.slug}/` }],
     listings: c.listings,
     sections: [linkSection('Cities in this county', cities.map(ci => chip(`/${ci.slug}/`, ci.name, ci.count))), linkSection('By practice area', areas.map(({ a, n }) => chip(`/area/${a.slug}/`, stripArea(a.name), n)))],
     faq, priority: 0.7, geo: { placename: `${c.name} County, GA`, ...(centroid(c.listings) || {}) },
+    cap: CAP.county, capNote: 'Open a city below for its full ranked list.',
+    about: { title: `About lawyers in ${c.name} County`, html: para(
+      `${seat ? `${seat.name} is the county seat of ${c.name} County, and the county’s Superior, Magistrate and Probate courts sit there${seatNote && seatNote.circuit ? `, part of the ${seatNote.circuit} Judicial Circuit` : ''}.` : `${c.name} County is in Georgia.`}${seatNote && seatNote.fed ? ` Federal cases go to the U.S. District Court for the ${seatNote.fed}.` : ''}`,
+      `We list ${nf(c.count)} lawyers and law firms across ${joinList(cities.slice(0, 6).map(ci => `${ci.name} (${nf(ci.count)})`))}${cities.length > 6 ? ` and ${nf(cities.length - 6)} more ${cities.length - 6 === 1 ? 'city' : 'cities'}` : ''}: ${nf(g.firm.length)} firms and ${nf(g.attorney.length)} solo attorneys.${tp && tp.rating ? ` ${tp.name} in ${tp.cityName} currently ranks first with ${tp.rating.toFixed(1)} stars${tp.reviews ? ` across ${nf(tp.reviews)} reviews` : ''}.` : ''}`,
+      `Rankings come from published ratings and review counts. Pick a city for the lawyers closest to you, or a practice area for the kind of case you have.`,
+    ) },
   });
 }
 
@@ -593,14 +785,15 @@ for (const z of ZIPS) {
   ];
   listingPage({
     urlPath: `zip/${z.slug}`,
-    title: `Lawyers in ${z.slug} (${z.city}, GA) | Law Firms and Attorneys | ${SITE}`,
-    desc: `Lawyers and law firms in the ${z.slug} ZIP code, ${z.city}, Georgia. ${nf(z.count)} local listings ranked by rating, with direct contact.`,
+    title: mkTitle(`Lawyers in ${z.slug}, ${z.city}, GA | Law Firms and Attorneys`),
+    desc: `Compare ${nf(z.count)} lawyers and law firms in ZIP code ${z.slug}, ${z.city}, GA, ranked by rating and reviews. See all ${z.city} lawyers for more options nearby.`,
     h1: `Lawyers in ${z.slug}`, sub: `${z.city}, GA · ${nf(z.count)} listings`,
     eyebrow: `${z.city}, GA`,
-    intro: `Lawyers and law firms in the ${z.slug} ZIP code (${z.city}, Georgia). ${nf(z.count)} local ${z.count === 1 ? 'listing' : 'listings'} ranked by rating, with one tap to call or get directions.`,
+    intro: `Lawyers and law firms in the ${z.slug} ZIP code (${z.city}, Georgia). ${nf(z.count)} local ${z.count === 1 ? 'listing' : 'listings'} ranked by rating.`,
     breadcrumbs: [{ name: 'Home', href: '/' }, { name: z.city, href: `/${z.citySlug}/` }, { name: z.slug, href: `/zip/${z.slug}/` }],
     listings: z.listings, sections: [linkSection('More in this city', [chip(`/${z.citySlug}/`, `All ${z.city} lawyers`, ci ? ci.count : undefined)])],
     faq, index: z.count >= MIN_INDEX, priority: 0.4, geo: { placename: `${z.city}, GA ${z.slug}`, ...(centroid(z.listings) || {}) },
+    cap: CAP.zip, capNote: `See all ${z.city} lawyers for the full list.`,
   });
 }
 
@@ -608,8 +801,11 @@ for (const z of ZIPS) {
 for (const a of AREAS) {
   const short = stripArea(a.name), tp = top(a.listings, 1)[0];
   const nFirm = a.listings.filter(l => l.entity === 'firm').length, nAtt = a.listings.filter(l => l.entity === 'attorney').length;
+  // Every city with an indexable city×area page, not just the top 30: the city
+  // grid IS the body of a statewide page (the cards are a sample), and it is
+  // the only internal link many of those pages get.
   const cities = [...new Set(a.listings.map(l => l.city))].map(s => CITIES.find(ci => ci.slug === s)).filter(Boolean)
-    .map(ci => ({ ...ci, n: a.listings.filter(l => l.city === ci.slug).length })).sort((x, y) => y.n - x.n).slice(0, 30);
+    .map(ci => ({ ...ci, n: a.listings.filter(l => l.city === ci.slug).length })).filter(ci => ci.n >= MIN_INDEX).sort((x, y) => y.n - x.n);
   const faq = [
     { q: `How many ${short.toLowerCase()} lawyers are in Georgia?`, a: `Our directory lists ${nf(a.count)} ${a.name.toLowerCase()}${a.count === 1 ? '' : 's'} across Georgia, ranked by rating and reviews.` },
     { q: `What should I know before hiring ${a_an(short)} ${short.toLowerCase()} lawyer in Georgia?`, a: FACTS[a.slug] || `Compare ratings, confirm the lawyer handles your type of matter, and ask about fees in a first consultation.` },
@@ -617,8 +813,8 @@ for (const a of AREAS) {
   ].filter(Boolean);
   listingPage({
     urlPath: `area/${a.slug}`,
-    title: `Best ${a.name}s in Georgia (${YEAR}) | ${SITE}`,
-    desc: `Compare the top ${short.toLowerCase()} lawyers across Georgia. ${nf(a.count)} ${a.group.toLowerCase()} practices with ratings, reviews, and direct contact. Updated ${YEAR}.`,
+    title: mkTitle(`Georgia ${short} Lawyers | Top Rated Attorneys (${YEAR})`),
+    desc: `Compare ${nf(a.count)} ${short.toLowerCase()} lawyers across Georgia by city, rating and reviews. ${cities.slice(0, 3).map(ci => ci.name).join(', ')} and ${nf(Math.max(0, cities.length - 3))} more cities.`,
     h1: `${a.name}s in Georgia`, sub: `${nf(a.count)} listings statewide`,
     eyebrow: 'Georgia, statewide',
     intro: AREA_LEDE[a.slug] ? AREA_LEDE[a.slug](a) : (`Compare top rated ${a.name.toLowerCase()}s across Georgia. We list ${nf(a.count)} ${a.group.toLowerCase()} practices, both established law firms and solo attorneys, with ratings, reviews, and direct contact.` + (FACTS[a.slug] ? ' ' + FACTS[a.slug] : '')),
@@ -631,6 +827,9 @@ for (const a of AREAS) {
       linkSection(`${short} by city`, cities.map(ci => chip(`/${ci.slug}/${a.slug}/`, ci.name, ci.n))),
     ],
     faq, priority: 0.8, geo: { placename: 'Georgia', lat: 32.9, lng: -83.6 },
+    cap: CAP.area, listTitle: `Top rated ${short.toLowerCase()} lawyers in Georgia`,
+    capNote: `Pick a city below for every ${short.toLowerCase()} lawyer near you.`,
+    about: { title: `${short} law in Georgia, in brief`, html: AREA_PROSE[a.slug] ? AREA_PROSE[a.slug](a) : para(FACTS[a.slug]) },
   });
 }
 
@@ -673,7 +872,7 @@ for (const e of ENTITIES) {
   ].filter(Boolean);
   listingPage({
     urlPath: e.path,
-    title: `Best ${e.noun} in Georgia (${YEAR}) | ${SITE}`,
+    title: mkTitle(`Best ${e.noun} in Georgia | Top Rated ${e.noun} (${YEAR})`),
     desc: `Compare the best ${e.nounLc} in Georgia, ranked by rating and review volume. ${nf(all.length)} ${e.nounLc} with ratings, reviews, and direct contact. Updated ${YEAR}.`,
     h1: `Top ${e.noun} in Georgia`, sub: `${nf(all.length)} ${e.nounLc} statewide`, eyebrow: 'Georgia, statewide',
     intro: `Find and compare the best ${e.nounLc} in Georgia, ranked by rating and review volume from public sources. We list ${nf(all.length)} ${e.nounLc} statewide, each with ratings, reviews, and one tap to call. Looking for ${other.noun} instead? See the ${other.noun} board.`,
@@ -690,7 +889,7 @@ for (const e of ENTITIES) {
     const otherN = LAWYERS.filter(l => l.entity !== e.key && l.typeSlug === a.slug).length;
     listingPage({
       urlPath: `${e.path}/${a.slug}`,
-      title: `Best ${short} ${e.noun} in Georgia (${YEAR}) | ${SITE}`,
+      title: mkTitle(`Best ${short} ${e.noun} in Georgia (${YEAR})`),
       desc: `Compare the best ${short.toLowerCase()} ${e.nounLc} in Georgia, ranked by rating and reviews. ${nf(list.length)} ${e.nounLc} with direct contact. Updated ${YEAR}.`,
       h1: `Top ${short} ${e.noun} in Georgia`, sub: `${nf(list.length)} ${e.nounLc}`, eyebrow: 'Georgia, statewide',
       intro: `Find and compare the best ${short.toLowerCase()} ${e.nounLc} in Georgia, ranked by rating and review volume. We list ${nf(list.length)} ${short.toLowerCase()} ${e.nounLc} statewide.` + (FACTS[a.slug] ? ' ' + FACTS[a.slug] : ''),
@@ -811,8 +1010,8 @@ function homeFaqHTML() {
 <button class="install-btn install-btn--hero" data-install>${svg('download', 16)}<span>Install</span></button>
 <div class="hero-inner">
 <p class="hero-eyebrow">Georgia, statewide</p>
-<h1 class="hero-title">Find the right lawyer, near you.</h1>
-<p class="hero-sub">Browse ${nf(LAWYERS.length)} law firms and attorneys across Georgia by city, county, ZIP, or practice area.</p>
+<h1 class="hero-title">Find a lawyer in Georgia, near you.</h1>
+<p class="hero-sub">Compare ${nf(LAWYERS.length)} law firms and attorneys across Georgia by city, county, ZIP, or practice area.</p>
 <button class="btn btn--primary btn--lg btn--hero" data-near>${svg('crosshair', 20)}<span>Find lawyers near me</span></button>
 <form class="search" data-search><span class="search-ic">${svg('search', 18)}</span><input class="search-input" type="search" placeholder="Search firm, attorney, city or area…" enterkeyhint="search"></form>
 ${trustBandHTML()}
@@ -832,12 +1031,15 @@ ${howItWorksHTML()}
 <section class="home-section">${linkSection('Top cities', CITIES.slice(0, 16).map(c => chip(`/${c.slug}/`, c.name, c.count)))}</section>
 <section class="home-section">${linkSection('By county', COUNTIES.slice(0, 14).map(c => chip(`/county/${c.slug}/`, `${c.name} County`, c.count)))}</section>
 ${lawyerCtaHTML()}
+<section class="home-section page-about"><div class="section-head"><h2 class="section-title">About this directory</h2></div>${para(
+    `Georgia Lawyer Directory lists ${nf(LAWYERS.length)} lawyers and law firms across ${nf(CITIES.length)} Georgia cities and ${nf(COUNTIES.length)} counties, gathered from public sources and ranked by published ratings and review counts. It is a directory, not a referral service: we do not vet, endorse or recommend any lawyer, and nothing here is legal advice.`,
+    `Start with the kind of case you have, such as <a href="/area/personal-injury/">personal injury</a>, <a href="/area/criminal-defense/">criminal defense</a>, <a href="/area/family-divorce/">divorce and family law</a> or <a href="/area/bankruptcy/">bankruptcy</a>, then narrow to your city. Each page explains how that area of Georgia law works and which local courts hear the case, so you know what to ask before you call.`,
+  )}</section>
 <section class="home-section"><div class="section-head"><h2 class="section-title">Frequently asked questions</h2></div>${homeFaqHTML()}</section>
 <p style="margin:8px 0 0"><a class="chip" href="/directory/">Browse all ${nf(CITIES.length)} cities and ${nf(COUNTIES.length)} counties →</a></p>`;
   const ld = { '@context': 'https://schema.org', '@graph': [
     { '@type': 'WebSite', name: SITE, alternateName: 'GA.Lawyers', url: ORIGIN + '/', potentialAction: { '@type': 'SearchAction', target: ORIGIN + '/search/?q={query}', 'query-input': 'required name=query' } },
     { '@type': 'Organization', name: SITE, alternateName: 'GA.Lawyers', url: ORIGIN + '/', areaServed: 'US-GA' },
-    faqLd(HOME_FAQ),
   ] };
   const html = `<!doctype html>
 <html lang="en">
@@ -845,8 +1047,8 @@ ${lawyerCtaHTML()}
 <meta charset="utf-8">
 ${GTAG}
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5">
-<title>${SITE} | Top Lawyers and Law Firms in Georgia (${YEAR})</title>
-<meta name="description" content="Find and compare ${nf(LAWYERS.length)} lawyers and law firms across Georgia. Browse by city, county, ZIP, or practice area with ratings, reviews, and direct contact.">
+<title>Find a Lawyer in Georgia | ${SITE} (${YEAR})</title>
+<meta name="description" content="Find and compare ${nf(LAWYERS.length)} lawyers and law firms across Georgia by city, county, ZIP or practice area, ranked by ratings and reviews. Personal injury, divorce, criminal defense and more.">
 <meta name="theme-color" content="#1a1a1f" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1a1a1f" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -907,7 +1109,9 @@ ${body}
 </body></html>`;
   out(urlPath, html, { index });
 }
-appShell({ urlPath: 'search', title: `Search Georgia Lawyers | ${SITE}`, desc: `Search ${nf(LAWYERS.length)} Georgia lawyers and law firms by name, city, county, ZIP, or practice area.`, h1: 'Search', eyebrow: 'Find a lawyer', mode: 'search', index: true });
+// /search/ is an empty shell until JS runs, so it has nothing for Google to
+// rank; noindex keeps it out of the way of the real pages (it stays crawlable).
+appShell({ urlPath: 'search', title: `Search Georgia Lawyers | ${SITE}`, desc: `Search ${nf(LAWYERS.length)} Georgia lawyers and law firms by name, city, county, ZIP, or practice area.`, h1: 'Search', eyebrow: 'Find a lawyer', mode: 'search', index: false });
 appShell({ urlPath: 'saved', title: `Saved Lawyers | ${SITE}`, desc: `Your saved Georgia lawyers and law firms.`, h1: 'Saved', eyebrow: 'Your shortlist', mode: 'saved' });
 appShell({ urlPath: 'visited', title: `Recently Visited | ${SITE}`, desc: `Lawyers you recently viewed.`, h1: 'Visited', eyebrow: 'Recently viewed', mode: 'visited' });
 
@@ -989,14 +1193,23 @@ infoPage({
 });
 
 // ── 404 ────────────────────────────────────────────────────────────────────────
-writeFileSync(join(ROOT, '404.html'), `<!doctype html><html lang="en"><head><meta charset="utf-8">${GTAG}<meta name="viewport" content="width=device-width, initial-scale=1"><title>Page not found | ${SITE}</title><meta name="robots" content="noindex"><link rel="stylesheet" href="/css/style.css"></head><body class="static">${NOSCRIPT}${headerHTML()}<main class="view static-wrap"><h1 class="static-h1">Page not found</h1><p class="static-sub">That page doesn’t exist. Browse the directory instead.</p><p><a class="btn btn--primary" href="/directory/">Browse all Georgia lawyers</a></p></main>${footerHTML()}</body></html>`);
+writeFileSync(join(ROOT, '404.html'), `<!doctype html><html lang="en"><head><meta charset="utf-8">${GTAG}<meta name="viewport" content="width=device-width, initial-scale=1"><title>Page not found | ${SITE}</title><meta name="robots" content="noindex"><link rel="stylesheet" href="/css/style.css">
+<script>
+// Old per-lawyer URLs (/lawyer/<firm-slug-city>/) were retired Jun 2026. GitHub
+// Pages cannot 301, so send those visitors (and crawlers that still hold the
+// link) to a search for the firm name instead of a dead end.
+(function () {
+  var m = location.pathname.match(/^\\/lawyer\\/([a-z0-9-]+)\\/?$/);
+  if (m) location.replace('/search/?q=' + encodeURIComponent(m[1].replace(/-/g, ' ')));
+})();
+</script></head><body class="static">${NOSCRIPT}${headerHTML()}<main class="view static-wrap"><h1 class="static-h1">Page not found</h1><p class="static-sub">That page doesn’t exist. Browse the directory instead.</p><p><a class="btn btn--primary" href="/directory/">Browse all Georgia lawyers</a></p></main>${footerHTML()}</body></html>`);
 
 // ── sitemap + robots ───────────────────────────────────────────────────────────
 sitemap.unshift({ loc: ORIGIN + '/', priority: 1.0 });
 const today = new Date().toISOString().slice(0, 10);
 writeFileSync(join(ROOT, 'sitemap.xml'),
   `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
-  sitemap.map(u => `  <url><loc>${u.loc}</loc><lastmod>${today}</lastmod><priority>${u.priority.toFixed(1)}</priority></url>`).join('\n') +
+  sitemap.map(u => `  <url><loc>${u.loc}</loc><lastmod>${u.changed === false ? (PREV_LASTMOD.get(u.loc) || today) : today}</lastmod><priority>${u.priority.toFixed(1)}</priority></url>`).join('\n') +
   `\n</urlset>\n`);
 writeFileSync(join(ROOT, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${ORIGIN}/sitemap.xml\n`);
 
