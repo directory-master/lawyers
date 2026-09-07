@@ -50,7 +50,8 @@ land.
 - ⬜ **Indexing → Pages → "Not found (404)"**: how many `/lawyer/…` URLs Google
   still hits. If it is thousands, add a JS redirect in `404.html` that maps
   `/lawyer/<id>/` → `/<city>/#<id>` (GitHub Pages has no server redirects) so
-  the crawl signal is not wasted.
+  the crawl signal is not wasted. ✅ v0.36.0 ships a JS redirect from
+  `/lawyer/<id>/` to `/search/?q=<firm name>`; still check the 404 count.
 - ✅ **Average position: 39.5** (site wide, 12 months). Page 4. So on-page
   fixes alone will not produce clicks; authority + page quality both needed.
   Still useful: per-page position for the four big URLs (Pages tab, toggle
@@ -62,7 +63,7 @@ land.
 - ⬜ Search appearance (expect no rich results).
 
 ### Priority 1: fix the four pages that hold ~68% of impressions
-- ⬜ **`/area/personal-injury/` (1,268 imp, 0 clicks).** It is a 5.5 MB page of
+- ✅ (v0.36.0, 2026-09-06) **`/area/personal-injury/` (1,268 imp, 0 clicks).** It is a 5.5 MB page of
   1,477 cards with no intro prose, heading "Top 1,477 Personal Injury Lawyers in
   Georgia". Rebuild the statewide area template: (a) `.area-intro` prose that
   answers "how to choose a Georgia personal injury lawyer" (contingency fees,
@@ -70,43 +71,43 @@ land.
   only; (c) **"By city" grid as the main body** (33 links now; make it every city
   with ≥ 3 PI listings, with counts); (d) visible FAQ; (e) "Top rated personal
   injury lawyers in Georgia" heading, not "Top 1,477". Target < 200 KB.
-- ⬜ **`/area/bankruptcy/` (583 imp)** and **`/area/criminal-defense/` (401
+- ✅ (v0.36.0) **`/area/bankruptcy/` (583 imp)** and **`/area/criminal-defense/` (401
   imp)**: same template. Bankruptcy intro: Chapter 7 vs 13 in two sentences,
   GA means test note, link to `/<city>/bankruptcy/`. Criminal: DUI / misdemeanor
   / felony / traffic mention (those are the sub-queries we get shown for).
-- ⬜ **`/brunswick/` (451 imp)** and `/brunswick/criminal-defense/` +
+- ✅ (v0.36.0, court/circuit prose via `CITY_NOTES`) **`/brunswick/` (451 imp)** and `/brunswick/criminal-defense/` +
   `/county/glynn/`: 2–3 paragraphs of local prose (Glynn County courthouse,
   Superior/State/Magistrate court, common case types), top 10, area chips, FAQ,
   internal links from home + `/directory/` + neighboring cities (St Simons,
   Darien, Kingsland).
-- ⬜ Then **Cumming (130), Gainesville (91), Dalton (76), Cherokee County (74),
+- ✅ (v0.36.0, `CITY_NOTES` covers ~60 cities + a county fallback) Then **Cumming (130), Gainesville (91), Dalton (76), Cherokee County (74),
   Warner Robins (74), Atlanta PI (68), Lawrenceville PI (51), Decatur (50),
   Rome (44), Chatham (44), East Ellijay (38)**. Same recipe, one template change
   covers them all: city page gets a real intro + county/court sentence.
 - ⬜ **Lesson from the 3 clicks**: they came from tiny, light pages (Vidalia,
   Toccoa, Stone Mountain) where we are likely top 10. Small pages already work;
   the big pages don't. That is the strongest argument for capping cards.
-- ⬜ **Home page has 3 impressions.** It is not ranking for anything. Add "Find a
+- ✅ (v0.36.0) **Home page has 3 impressions.** It is not ranking for anything. Add "Find a
   lawyer in Georgia" `<h1>`, a real paragraph, links to the 11 area pages and
   top 30 cities with counts, so it becomes the hub Google expects.
-- ⬜ `/search/` is `index, follow` → make it `noindex, follow` (like `/saved/`).
+- ✅ (v0.36.0) `/search/` is `index, follow` → make it `noindex, follow` (like `/saved/`).
   `/directory/` (94 imp) and `/areas/` are fine as hubs but need intro prose.
 
 ### Priority 2: titles / snippets (generator wide)
-- ⬜ **Titles ≤ 60 chars, keyword first, no leading count.** "95 Lawyers in
+- ✅ (v0.36.0, `mkTitle` keeps the brand suffix only when it fits) **Titles ≤ 60 chars, keyword first, no leading count.** "95 Lawyers in
   Brunswick, GA | Top Rated Law Firms (2026) | Georgia Lawyer Directory" is 87
   chars and truncated. Target: "Brunswick, GA Lawyers | Top Law Firms and
   Attorneys (2026)". Users search "lawyers in brunswick ga" / "brunswick ga
   attorneys": both words, city first. Apply to city, county, zip, area, city×area.
-- ⬜ **Descriptions for search intent, not app copy.** Kill "one tap to call",
+- ✅ (v0.36.0) **Descriptions for search intent, not app copy.** Kill "one tap to call",
   "in our directory", "practices you can call". Pattern: "Compare 95 Brunswick,
   GA lawyers and law firms by practice area, rating and reviews. Criminal
   defense, personal injury, divorce, real estate and more." ≤ 155 chars, no dashes.
-- ⬜ Area pages: "Best Bankruptcy Lawyers in Georgia (2026)" → "Georgia
+- ✅ (v0.36.0, "Georgia Bankruptcy Lawyers | Top Rated Attorneys (2026)") Area pages: "Best Bankruptcy Lawyers in Georgia (2026)" → "Georgia
   Bankruptcy Lawyers | Compare 244 Attorneys Statewide (2026)" (query is
   "bankruptcy attorney georgia", both nouns should appear).
-- ⬜ `<h1>` / `.area-intro` mirror the new title phrasing.
-- ⬜ "Top 305 Lawyers in Marietta, GA" heading → "Top rated lawyers in
+- ✅ (v0.36.0; note `.area-intro`/`.hero-lede` stay hidden by CSS, the visible copy is the new `.page-about` block) `<h1>` / `.area-intro` mirror the new title phrasing.
+- ✅ (v0.36.0) "Top 305 Lawyers in Marietta, GA" heading → "Top rated lawyers in
   Marietta, GA".
 
 ### Priority 3: long-tail sub-areas we get shown for but have no page
@@ -125,10 +126,10 @@ land.
   Spanish on cities with Spanish-named firms is cheap.
 
 ### Priority 4: page weight / indexability
-- ⬜ **Cap rendered cards per page** (Top 10 + ~40 in HTML, rest via "Show
+- ✅ (v0.36.0: area 50, city/county/city×area 60, zip 40; PI page 5.5 MB → 220 KB) **Cap rendered cards per page** (Top 10 + ~40 in HTML, rest via "Show
   more" from inline JSON or paginated URLs). Marietta = 1.1 MB HTML, Cobb = 1.6
   MB, `/area/personal-injury/` = 5.5 MB. Target < 150 KB.
-- ⬜ Drop `FAQPage` JSON-LD (no rich result for commercial sites since Aug 2023).
+- ✅ (v0.36.0) Drop `FAQPage` JSON-LD (no rich result for commercial sites since Aug 2023).
   Keep BreadcrumbList, CollectionPage, ItemList. Keep the FAQ as visible HTML.
 - ⬜ Self-host / proxy listing thumbnails (third-party LCP; ties to
   `fetch-images.mjs`).
@@ -143,7 +144,7 @@ land.
   gets its own page as a Premium perk).
 
 ### Freshness (the site has not changed since Jun 21)
-- ⬜ Ship something every 1–2 weeks (new scrapes, intro copy, a city page)
+- 🚧 (lastmod now only moves when a page changed, v0.36.0) Ship something every 1–2 weeks (new scrapes, intro copy, a city page)
   and bump `lastmod` only on pages that actually changed (it is currently
   2026-06-21 on all 1,083 URLs, which Google learns to ignore).
 - ⬜ Re-submit the sitemap in GSC after the Priority 1 rebuild and request
@@ -157,6 +158,13 @@ land.
 - ⬜ Google Business Profile for Artivicolab pointing at the directory.
 
 ### Analytics log (newest first)
+- 2026-09-06 · **Shipped v0.36.0** (commit 9230d10): card caps, visible About
+  prose on every listing page (11 area guides, ~60 city court notes, county
+  summaries), 84 city links on the PI page (was 30), keyword titles ≤ 61 chars,
+  intent descriptions, FAQPage schema dropped, `/search/` noindex, home retitled
+  "Find a Lawyer in Georgia", stable sitemap lastmod, `/lawyer/` 404 redirect.
+  Before/after: PI page 5.5 MB → 220 KB, Cobb 1.6 MB → 250 KB, Brunswick 364 KB
+  → 244 KB. Re-check GSC impressions/position around 2026-09-20 and 2026-10-06.
 - 2026-09-06 · **Overview (12 months)**: 3 clicks, 4,380 imp, CTR 0.1%,
   **average position 39.5** (page 4). That is the answer: this is not a
   snippet/CTR problem, it is a ranking problem. Nothing at position 40 gets
