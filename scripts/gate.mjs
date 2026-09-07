@@ -7,7 +7,7 @@
 // folders that also hold non-law scrapes.
 
 import { readFileSync } from 'node:fs';
-import { CATEGORIES } from '../js/data/categories.js';
+import { CATEGORIES, SUBAREAS } from '../js/data/categories.js';
 
 export const kebab = (s) => (s || '').toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
@@ -55,6 +55,15 @@ export function inferType(name, category) {
   for (const t of SPECIFIC) if (t.res.some(re => re.test(hay))) return t.type;
   if (GENERAL_RES.some(re => re.test(hay))) return GENERAL.type;
   return knownFirmType(name);   // last resort: well-known firms with a blank category
+}
+
+// Sub-area focus: every SUBAREAS entry whose synonyms appear in the name or the
+// scraped category (word boundary). Independent of the main type, so a
+// "Divorce & DUI" firm typed family still gets the dui focus.
+const FOCUS = SUBAREAS.map(s => ({ slug: s.slug, res: s.synonyms.map(wb) }));
+export function inferFocus(name, category) {
+  const hay = `${name} ${category}`;
+  return FOCUS.filter(f => f.res.some(re => re.test(hay))).map(f => f.slug);
 }
 
 const ATTY = /\battorney(?!s)\b|\besq\b|attorney at law|law office of|offices of\b/i;

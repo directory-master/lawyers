@@ -111,7 +111,7 @@ land.
   Marietta, GA".
 
 ### Priority 3: long-tail sub-areas we get shown for but have no page
-- ⬜ Add narrower practice-area pages (or at least intro copy + synonyms so the
+- ✅ (v0.37.0, 2026-09-06: `SUBAREAS` in categories.js, `focus` field at import, 186 city + 18 statewide focus pages, e.g. `/gainesville/car-accident/`, `/atlanta/dui/`, `/area/estate-elder/wills-trusts/`; each lists firms that name the focus, then the rest of the parent area) Add narrower practice-area pages (or at least intro copy + synonyms so the
   city×area page matches): **car / motorcycle accident** (Cumming, Gainesville,
   Woodstock, Braselton), **DUI / traffic / misdemeanor** (Cumming), **corporate /
   business** (Cumming, Bibb), **legal malpractice** (Brunswick), **title / closing
@@ -157,6 +157,12 @@ land.
 - ⬜ Google Business Profile for Artivicolab pointing at the directory.
 
 ### Analytics log (newest first)
+- 2026-09-06 · **Shipped v0.37.0**: focus (sub-area) pages. 15 focuses under
+  the 11 areas; a listing gets a focus only when its name or scraped category
+  names it. Page = specialists ranked + "More <parent> lawyers in <city>"
+  unranked + Georgia facts prose + FAQ. City page needs ≥2 matches (indexed at
+  ≥3), statewide ≥3. Sitemap 1,084 → 1,270 URLs. Not covered for lack of data:
+  legal malpractice, prenup, deportation, L‑1 (0–2 firms name them).
 - 2026-09-06 · **Shipped v0.36.0** (commit 9230d10): card caps, visible About
   prose on every listing page (11 area guides, ~60 city court notes, county
   summaries), 84 city links on the PI page (was 30), keyword titles ≤ 61 chars,

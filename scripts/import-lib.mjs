@@ -17,7 +17,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
-  kebab, inferType, entityKindOf, isGA, isLawyerRow,
+  kebab, inferType, inferFocus, entityKindOf, isGA, isLawyerRow,
   cityNameFromAddr, citySlugOf, rawKey, JUNK_EMAIL, JUNK_LOCAL,
 } from './gate.mjs';
 
@@ -193,6 +193,7 @@ export function buildStore(csvRows, fileCount, label = 'CSV') {
       for (const rec of ratings) keep.ratings = mergeRating(keep.ratings, rec);
       Object.assign(keep, aggRatings(keep.ratings));
       keep.image ||= r['Featured image'] || null;
+      for (const f of inferFocus(nm, r['Category'] || '')) if (!keep.focus.includes(f)) keep.focus.push(f);
       keep.hoursText ||= r['Open Hours'] || null;
       keep.phone ||= r['Phone'] || null;
       keep.website ||= r['Website'] || null;
@@ -232,6 +233,7 @@ export function buildStore(csvRows, fileCount, label = 'CSV') {
     const listing = {
       id: kebab(`${nm}-${cityName}`).slice(0, 60),
       name: nm, city: kebab(cityName), cityName, type, entity: entityKindOf(nm),
+      focus: inferFocus(nm, r['Category'] || ''),
       tier: r.tier || 'free', paid: r.paid || false, paidAt: r.paidAt || null, paidDays: r.paidDays || 30,
       verified: r.verified || false, barNo: r.barNo || null,
       rating, reviews, ratings, zip,

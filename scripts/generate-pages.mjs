@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 
 import { IMPORTED } from '../js/data/lawyers-imported.js';
 import { CITY_COUNTY } from '../js/data/ga-counties.js';
-import { CATEGORIES, TYPE_BY_SLUG, SLUG_BY_TYPE } from '../js/data/categories.js';
+import { CATEGORIES, TYPE_BY_SLUG, SLUG_BY_TYPE, SUBAREAS } from '../js/data/categories.js';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SITE = 'Georgia Lawyer Directory';
@@ -154,6 +154,27 @@ const AREAS = CATEGORIES.map(c => ({ slug: c.slug, name: c.type, group: c.group,
 const citySlugs = new Set(CITIES.map(c => c.slug));
 const centroid = (list) => { const g = list.filter(l => l.lat != null); if (!g.length) return null; return { lat: g.reduce((s, l) => s + l.lat, 0) / g.length, lng: g.reduce((s, l) => s + l.lng, 0) / g.length }; };
 const CITY_CENT = new Map(CITIES.map(c => [c.slug, centroid(c.listings)]));
+
+// Sub-area (focus) pages. A city gets /<city>/<focus>/ when at least MIN_FOCUS
+// of its listings name that focus (indexed from MIN_INDEX); the state gets
+// /area/<parent>/<focus>/ when at least MIN_INDEX do. The page lists the firms
+// that name the focus, then the rest of the parent area, so it is never a
+// re-sort of the parent page under a new URL.
+const MIN_FOCUS = 2;
+const hasFocus = (l, slug) => Array.isArray(l.focus) && l.focus.includes(slug);
+const CITY_FOCUS = new Map();   // citySlug → [{ sub, matches, rest }]
+for (const c of CITIES) {
+  const arr = [];
+  for (const sub of SUBAREAS) {
+    const matches = c.listings.filter(l => hasFocus(l, sub.slug));
+    if (matches.length < MIN_FOCUS) continue;
+    const rest = c.listings.filter(l => l.typeSlug === sub.parent && !hasFocus(l, sub.slug));
+    arr.push({ sub, matches, rest });
+  }
+  if (arr.length) CITY_FOCUS.set(c.slug, arr);
+}
+const STATE_FOCUS = SUBAREAS.map(sub => ({ sub, matches: LAWYERS.filter(l => hasFocus(l, sub.slug)) })).filter(x => x.matches.length >= MIN_INDEX);
+const focusHref = (citySlug, sub) => `/${citySlug}/${sub.slug}/`;
 function nearbyCities(slug, n = 6) {
   const me = CITY_CENT.get(slug); if (!me) return [];
   return CITIES.filter(c => c.slug !== slug && CITY_CENT.get(c.slug))
@@ -353,6 +374,75 @@ function cityProse(c, g, areas, tp, avg) {
     `Rankings come from published ratings and review counts, not from us. Call, get directions or open a firm’s website straight from its card, and use the practice area links to narrow the list to your kind of case.`,
   );
 }
+
+// Georgia facts per focus, shown as the visible About block on focus pages.
+const SUB_PROSE = {
+  'car-accident': (n) => para(
+    `Georgia is an at fault state: the driver who caused the crash, through their insurer, pays for the damage. Every Georgia driver must carry at least 25/50/25 liability coverage, which is often not enough for a serious injury, so your own uninsured and underinsured motorist coverage matters.`,
+    `You have two years from the crash to file suit. Georgia's modified comparative negligence rule lets you recover as long as you were less than 50 percent at fault, reduced by your share. Get the Georgia Motor Vehicle Crash Report, photograph the scene, and see a doctor the same week; gaps in treatment are the first thing an adjuster points to.`,
+    `${nf(n)} ${n === 1 ? 'practice names' : 'practices name'} car and auto accident work in their listing. Most take these cases on contingency.`),
+  'truck-accident': (n) => para(
+    `Commercial truck crashes are governed by federal FMCSA rules as well as Georgia law. Hours of service logs, electronic logging devices, maintenance records and the truck's own event recorder can all prove fault, but carriers are only required to keep some of it for months, so a preservation letter should go out early.`,
+    `There are usually several defendants: the driver, the motor carrier, sometimes the shipper or a maintenance contractor. Interstate carriers must carry at least $750,000 in liability coverage, far more than a passenger vehicle. The two year Georgia deadline still applies.`,
+    `${nf(n)} ${n === 1 ? 'practice names' : 'practices name'} truck and tractor trailer cases in their listing.`),
+  'motorcycle-accident': (n) => para(
+    `Georgia requires every rider to wear a DOT approved helmet (O.C.G.A. § 40-6-315) and does not allow lane splitting. Insurers use both to argue the rider shares fault, which matters under Georgia's 50 percent comparative negligence bar.`,
+    `Motorcycle injuries are typically severe, so the other driver's 25/50/25 minimum policy runs out fast; your own uninsured motorist coverage and any umbrella policy come into play. The filing deadline is two years from the crash.`,
+    `${nf(n)} ${n === 1 ? 'practice names' : 'practices name'} motorcycle cases in their listing.`),
+  'wrongful-death': (n) => para(
+    `Georgia's Wrongful Death Act measures damages as the full value of the life of the person who died, from their own point of view: lost wages and benefits plus the intangible value of the life they would have lived. A separate estate claim covers medical bills, funeral costs and the pain the person suffered before death.`,
+    `The surviving spouse brings the claim, sharing with children; if there is no spouse, the children, then the parents, then the estate. The deadline is two years from the death, with some pauses when a criminal case is pending.`,
+    `${nf(n)} ${n === 1 ? 'practice names' : 'practices name'} wrongful death in their listing.`),
+  'medical-malpractice': (n) => para(
+    `A Georgia medical malpractice suit must be filed within two years of the injury and, with few exceptions, within five years of the negligent act. The complaint must be filed with an expert affidavit from a qualified medical professional stating at least one negligent act (O.C.G.A. § 9-11-9.2), which is why these cases take preparation before filing.`,
+    `Nursing home neglect and abuse claims follow the same rules. Georgia's cap on non economic damages was struck down by the state Supreme Court in 2010, so there is no fixed ceiling on pain and suffering awards.`,
+    `${nf(n)} ${n === 1 ? 'practice names' : 'practices name'} medical malpractice or nursing home cases in their listing.`),
+  'workers-compensation': (n) => para(
+    `Georgia workers' compensation is no fault: if you were hurt on the job you are covered whether or not anyone was careless, and in exchange you generally cannot sue your employer. Report the injury to your employer within 30 days and file a WC-14 with the State Board of Workers' Compensation within one year.`,
+    `Benefits are two thirds of your average weekly wage up to the state cap, plus medical care from a doctor on the employer's posted panel. Attorney fees are capped at 25 percent of benefits and must be approved by the Board. A separate personal injury claim may exist against a third party, such as another driver.`,
+    `${nf(n)} ${n === 1 ? 'practice names' : 'practices name'} workers' compensation in their listing.`),
+  'dui': (n) => para(
+    `Georgia's per se limit is 0.08 (0.04 for commercial drivers, 0.02 under 21), and you can be charged below it on impairment alone. After an arrest you have 30 days to request an administrative license suspension hearing or install an ignition interlock device, or your license is suspended automatically. Refusing the state test brings its own one year suspension under implied consent.`,
+    `A first DUI is a misdemeanor with a fine, community service, DUI school, probation and at least 24 hours in jail, plus a license suspension that can often be converted to a limited permit. Repeat offenses within ten years escalate quickly. Many DUI lawyers charge a flat fee and offer a free first consultation.`,
+    `${nf(n)} ${n === 1 ? 'practice names' : 'practices name'} DUI defense in their listing.`),
+  'traffic-tickets': (n) => para(
+    `Georgia suspends a license at 15 points in 24 months (4 points for drivers under 21). Speeding 15 to 18 over is 2 points, 19 to 23 is 3, 24 to 33 is 4, and reckless driving is a 4 point misdemeanor. The Super Speeder law adds a $200 state fee for 75 or more on a two lane road or 85 anywhere.`,
+    `A lawyer can often reduce a ticket to a lesser offense, keep points off your record, or handle the court date so you do not have to appear. A nolo contendere plea avoids points once every five years.`,
+    `${nf(n)} ${n === 1 ? 'practice names' : 'practices name'} traffic and ticket defense in their listing.`),
+  'child-custody': (n) => para(
+    `Georgia separates legal custody, who makes decisions, from physical custody, where the child lives. Every custody case needs a parenting plan, and judges decide on the best interest of the child using the factors in O.C.G.A. § 19-9-3. A child 14 or older may choose which parent to live with, subject to the judge's approval; the wishes of a child 11 to 13 are considered.`,
+    `Changing custody later requires a material change in circumstances. Unmarried fathers must file a legitimation action before they can seek custody or visitation.`,
+    `${nf(n)} ${n === 1 ? 'practice names' : 'practices name'} child custody in their listing.`),
+  'wills-trusts': (n) => para(
+    `A Georgia will must be signed by someone at least 14 years old and witnessed by two people; adding a self proving affidavit means the witnesses never have to appear in court. Georgia has no estate or inheritance tax. Without a will, a spouse shares the estate with the children and never receives less than a third.`,
+    `A revocable living trust keeps assets out of probate and private, at the cost of retitling them during your lifetime. Most plans also include a durable financial power of attorney and the Georgia Advance Directive for Health Care.`,
+    `${nf(n)} ${n === 1 ? 'practice names' : 'practices name'} wills, trusts or estate planning in their listing.`),
+  'probate': (n) => para(
+    `Probate happens in the Probate Court of the county where the person lived. The executor petitions for letters testamentary, notifies heirs and creditors, gathers assets, pays debts and distributes what remains. A straightforward Georgia estate takes roughly six months to a year.`,
+    `Georgia offers shortcuts: when there is no will, no debts and every heir agrees, a petition for no administration necessary skips formal probate, and a surviving spouse or minor children can file for year's support, which takes priority over most creditors.`,
+    `${nf(n)} ${n === 1 ? 'practice names' : 'practices name'} probate in their listing.`),
+  'elder-law': (n) => para(
+    `Elder law centers on paying for long term care. Georgia Medicaid looks back five years at transfers before it will cover a nursing home, and because Georgia is an income cap state, applicants over the limit need a Qualified Income Trust (Miller trust) to qualify. Planning early keeps more options open.`,
+    `Elder law attorneys also handle guardianship and conservatorship petitions in Probate Court when a parent can no longer manage, VA Aid and Attendance benefits, powers of attorney, and advance directives.`,
+    `${nf(n)} ${n === 1 ? 'practice names' : 'practices name'} elder law in their listing.`),
+  'title-closing': (n) => para(
+    `Georgia is an attorney closing state: only a licensed Georgia attorney may conduct a real estate closing, examine title and disburse funds. The closing attorney usually represents the lender, so a buyer or seller who wants their own advocate hires a second lawyer to review the contract and the closing statement.`,
+    `The closing attorney searches the title, clears liens, issues title insurance (an owner's policy is optional but usually worth it), prepares the security deed, and records everything with the county. Georgia charges a transfer tax of $1 per $1,000 of price and an intangible tax of $1.50 per $500 on a new loan.`,
+    `${nf(n)} ${n === 1 ? 'practice names' : 'practices name'} title work or closings in their listing.`),
+  'business-law': (n) => para(
+    `Georgia LLCs and corporations are formed through the Secretary of State and must file an annual registration by April 1. A business lawyer drafts the operating agreement or bylaws, contracts, commercial leases and employment agreements, and advises on non compete clauses under Georgia's Restrictive Covenants Act.`,
+    `Business disputes are heard in State or Superior Court, or in the Georgia State-wide Business Court for larger commercial cases. Written contract claims must be brought within six years, oral ones within four.`,
+    `${nf(n)} ${n === 1 ? 'practice names' : 'practices name'} business or corporate law in their listing.`),
+  'civil-litigation': (n) => para(
+    `Civil disputes in Georgia start in Magistrate Court for claims up to $15,000, where no lawyer is required, and in State or Superior Court above that. Written contract claims have a six year deadline, oral contracts four, and most injury and property damage claims two.`,
+    `Litigation attorneys handle pleadings, discovery, motions, mediation and trial. Many Georgia courts require mediation before a case reaches a jury, and Georgia's offer of settlement rule can shift attorney fees onto a party that refuses a reasonable offer.`,
+    `${nf(n)} ${n === 1 ? 'practice names' : 'practices name'} litigation or trial work in their listing.`),
+};
+const subFaq = (sub, place, n, top) => [
+  { q: `How many ${sub.label.toLowerCase()} lawyers are in ${place}?`, a: `${nf(n)} ${n === 1 ? 'lawyer or law firm names' : 'lawyers and law firms name'} ${sub.label.toLowerCase()} work in ${place} on this page, ranked by rating and reviews.` },
+  top && top.rating ? { q: `Who is a top ${sub.label.toLowerCase()} lawyer in ${place}?`, a: `${top.name} is among the highest rated, with ${top.rating.toFixed(1)} stars${top.reviews ? ` across ${nf(top.reviews)} reviews` : ''}.` } : null,
+  { q: `Do I need a specialist for ${a_an(sub.label)} ${sub.label.toLowerCase()} case?`, a: `Not always. Many ${stripArea(TYPE_BY_SLUG[sub.parent] || '').toLowerCase()} lawyers handle these cases too, which is why the rest of that practice area is listed below the specialists. Ask about experience with your exact situation in the first call.` },
+].filter(Boolean);
 
 const AREA_LEDE = {
   'personal-injury': (a) => `Find and compare the best personal injury lawyers in Georgia. We list ${nf(a.count)} injury and accident attorneys statewide, from established law firms to solo practitioners, with ratings, real reviews, and one tap to call. Most work on contingency, so you pay no fee unless they win your case.`,
@@ -657,7 +747,7 @@ ${controls && listings.length > 1 ? segmentedHTML(listings) : ''}
 <div class="card-list" data-more-list>${all.map((l, i) => cardHTML(l, i + 1, i >= SHOW ? 'card--collapsed' : '')).join('\n')}</div>
 ${all.length > SHOW ? `<button class="more-btn" data-more-btn>Show ${Math.min(20, all.length - SHOW)} more lawyers</button>` : ''}
 ${cap && sorted.length > cap ? `<p class="rank-note">Showing the top ${nf(cap)} of ${nf(sorted.length)}. ${capNote || 'Browse by practice area or city for the full ranked list.'}</p>` : ''}
-${nearby && nearby.listings.length ? `<div class="section-head"><h2 class="section-title">More lawyers near ${esc(nearby.name)}</h2><span class="section-tagline">From the closest Georgia cities</span></div>
+${nearby && nearby.listings.length ? `<div class="section-head"><h2 class="section-title">${esc(nearby.title || `More lawyers near ${nearby.name}`)}</h2><span class="section-tagline">${esc(nearby.tagline || 'From the closest Georgia cities')}</span></div>
 <div class="card-list">${nearby.listings.map(l => cardHTML(l, null)).join('\n')}</div>` : ''}
 ${aboutHTML}
 ${sections.join('\n')}
@@ -737,10 +827,45 @@ for (const c of CITIES) {
       eyebrow: `${c.name}, GA`,
       intro: aIntro, breadcrumbs: [{ name: 'Home', href: '/' }, { name: c.name, href: `/${c.slug}/` }, { name: short, href: `/${c.slug}/${a.slug}/` }],
       listings: list,
-      sections: [linkSection('Related', [chip(`/${c.slug}/`, `All ${c.name} lawyers`, c.count), chip(`/area/${a.slug}/`, `${short} statewide`, a.count), ...near.slice(0, 3).map(n => chip(`/${n.slug}/${a.slug}/`, `${short} in ${n.name}`))])],
+      sections: [
+        linkSection(`${short} focus in ${c.name}`, (CITY_FOCUS.get(c.slug) || []).filter(f => f.sub.parent === a.slug).map(f => chip(focusHref(c.slug, f.sub), f.sub.label, f.matches.length))),
+        linkSection('Related', [chip(`/${c.slug}/`, `All ${c.name} lawyers`, c.count), chip(`/area/${a.slug}/`, `${short} statewide`, a.count), ...near.slice(0, 3).map(n => chip(`/${n.slug}/${a.slug}/`, `${short} in ${n.name}`))]),
+      ].filter(Boolean),
       faq: aFaq, index: list.length >= MIN_INDEX, priority: 0.6, geo: { placename: `${c.name}, GA`, ...(CITY_CENT.get(c.slug) || {}) },
       cap: CAP.cityArea, capNote: `See all ${c.name} lawyers or the statewide ${short.toLowerCase()} list for the rest.`,
       about: { title: `About ${short.toLowerCase()} lawyers in ${c.name}`, html: para(local, FACTS[a.slug], `We list ${nf(list.length)} ${short.toLowerCase()} ${list.length === 1 ? 'practice' : 'practices'} serving ${c.name}, ranked by published ratings and review counts.${at && at.rating ? ` ${at.name} currently ranks first with ${at.rating.toFixed(1)} stars${at.reviews ? ` from ${nf(at.reviews)} reviews` : ''}.` : ''} Compare a few, then ask each about fees and a first consultation.`) },
+    });
+  }
+}
+
+// ── city focus pages (/<city>/<focus>/) ───────────────────────────────────────
+for (const c of CITIES) {
+  for (const { sub, matches, rest } of CITY_FOCUS.get(c.slug) || []) {
+    const parentType = TYPE_BY_SLUG[sub.parent] || '';
+    const parentShort = stripArea(parentType);
+    const tp = top(matches, 1)[0];
+    const lbl = sub.label.toLowerCase();
+    const near = nearbyCities(c.slug, 8).filter(n => (CITY_FOCUS.get(n.slug) || []).some(f => f.sub.slug === sub.slug)).slice(0, 3);
+    listingPage({
+      urlPath: `${c.slug}/${sub.slug}`,
+      title: mkTitle(`${c.name}, GA ${sub.label} Lawyers | Top Rated (${YEAR})`),
+      desc: `Compare ${nf(matches.length)} ${lbl} lawyers in ${c.name}, GA by rating and reviews${tp && tp.rating ? `, led by ${tp.name} at ${tp.rating.toFixed(1)} stars` : ''}, plus ${nf(rest.length)} more ${parentShort.toLowerCase()} ${rest.length === 1 ? 'lawyer' : 'lawyers'} nearby.`,
+      h1: `${sub.label} Lawyers in ${c.name}, GA`, sub: `${nf(matches.length)} ${matches.length === 1 ? 'listing' : 'listings'} · ${c.name}`,
+      eyebrow: `${c.name}, GA · ${parentShort}`,
+      intro: `${sub.label} lawyers in ${c.name}, Georgia: ${nf(matches.length)} ${matches.length === 1 ? 'practice that names' : 'practices that name'} ${lbl} work, ranked by rating and reviews, followed by other ${parentShort.toLowerCase()} lawyers in ${c.name}.`,
+      breadcrumbs: [{ name: 'Home', href: '/' }, { name: c.name, href: `/${c.slug}/` }, { name: parentShort, href: `/${c.slug}/${sub.parent}/` }, { name: sub.label, href: focusHref(c.slug, sub) }],
+      listings: matches,
+      listTitle: `Top rated ${lbl} lawyers in ${c.name}`,
+      nearby: rest.length ? { name: c.name, listings: [...rest].sort(byRank).slice(0, 20), title: `More ${parentShort.toLowerCase()} lawyers in ${c.name}`, tagline: 'Also handle these cases' } : null,
+      sections: [linkSection('Related', [
+        chip(`/${c.slug}/${sub.parent}/`, `All ${parentShort.toLowerCase()} lawyers in ${c.name}`, matches.length + rest.length),
+        chip(`/area/${sub.parent}/${sub.slug}/`, `${sub.label} statewide`, STATE_FOCUS.find(x => x.sub.slug === sub.slug)?.matches.length),
+        chip(`/${c.slug}/`, `All ${c.name} lawyers`, c.count),
+        ...near.map(n => chip(focusHref(n.slug, sub), `${sub.label} in ${n.name}`)),
+      ].filter(Boolean))],
+      faq: subFaq(sub, c.name, matches.length, tp),
+      index: matches.length >= MIN_INDEX, priority: 0.5, geo: { placename: `${c.name}, GA`, ...(CITY_CENT.get(c.slug) || {}) },
+      about: { title: `${sub.label} law in Georgia, in brief`, html: SUB_PROSE[sub.slug] ? SUB_PROSE[sub.slug](matches.length) : para(FACTS[sub.parent]) },
     });
   }
 }
@@ -825,12 +950,38 @@ for (const a of AREAS) {
         nFirm ? chip(`/firms/${a.slug}/`, `Top ${short.toLowerCase()} law firms`, nFirm) : null,
         nAtt ? chip(`/attorneys/${a.slug}/`, `Top ${short.toLowerCase()} attorneys`, nAtt) : null,
       ].filter(Boolean)),
+      linkSection(`${short} by focus`, STATE_FOCUS.filter(x => x.sub.parent === a.slug).map(x => chip(`/area/${a.slug}/${x.sub.slug}/`, x.sub.label, x.matches.length))),
       linkSection(`${short} by city`, cities.map(ci => chip(`/${ci.slug}/${a.slug}/`, ci.name, ci.n))),
     ],
     faq, priority: 0.8, geo: { placename: 'Georgia', lat: 32.9, lng: -83.6 },
     cap: CAP.area, listTitle: `Top rated ${short.toLowerCase()} lawyers in Georgia`,
     capNote: `Pick a city below for every ${short.toLowerCase()} lawyer near you.`,
     about: { title: `${short} law in Georgia, in brief`, html: AREA_PROSE[a.slug] ? AREA_PROSE[a.slug](a) : para(FACTS[a.slug]) },
+  });
+}
+
+// ── statewide focus pages (/area/<parent>/<focus>/) ───────────────────────────
+for (const { sub, matches } of STATE_FOCUS) {
+  const parentType = TYPE_BY_SLUG[sub.parent] || '', parentShort = stripArea(parentType);
+  const tp = top(matches, 1)[0], lbl = sub.label.toLowerCase();
+  const cities = CITIES.filter(c => (CITY_FOCUS.get(c.slug) || []).some(f => f.sub.slug === sub.slug && f.matches.length >= MIN_INDEX))
+    .map(c => ({ c, n: CITY_FOCUS.get(c.slug).find(f => f.sub.slug === sub.slug).matches.length })).sort((x, y) => y.n - x.n);
+  listingPage({
+    urlPath: `area/${sub.parent}/${sub.slug}`,
+    title: mkTitle(`Georgia ${sub.label} Lawyers | Top Rated Attorneys (${YEAR})`),
+    desc: `Compare ${nf(matches.length)} ${lbl} lawyers across Georgia by city, rating and reviews.${cities.length ? ` ${cities.slice(0, 3).map(x => x.c.name).join(', ')}${cities.length > 3 ? ` and ${nf(cities.length - 3)} more cities` : ''}.` : ''}`,
+    h1: `${sub.label} Lawyers in Georgia`, sub: `${nf(matches.length)} listings statewide`,
+    eyebrow: `Georgia, statewide · ${parentShort}`,
+    intro: `${sub.label} lawyers across Georgia: ${nf(matches.length)} practices that name ${lbl} work, ranked by rating and review volume.`,
+    breadcrumbs: [{ name: 'Home', href: '/' }, { name: 'Practice areas', href: '/areas/' }, { name: parentShort, href: `/area/${sub.parent}/` }, { name: sub.label, href: `/area/${sub.parent}/${sub.slug}/` }],
+    listings: matches, cap: CAP.area, listTitle: `Top rated ${lbl} lawyers in Georgia`,
+    capNote: `Pick a city below for ${lbl} lawyers near you.`,
+    sections: [
+      linkSection(`${sub.label} by city`, cities.map(x => chip(focusHref(x.c.slug, sub), x.c.name, x.n))),
+      linkSection('Related', [chip(`/area/${sub.parent}/`, `All ${parentShort.toLowerCase()} lawyers in Georgia`, AREAS.find(a => a.slug === sub.parent)?.count), ...STATE_FOCUS.filter(x => x.sub.parent === sub.parent && x.sub.slug !== sub.slug).map(x => chip(`/area/${sub.parent}/${x.sub.slug}/`, x.sub.label, x.matches.length))]),
+    ],
+    faq: subFaq(sub, 'Georgia', matches.length, tp), priority: 0.6, geo: { placename: 'Georgia', lat: 32.9, lng: -83.6 },
+    about: { title: `${sub.label} law in Georgia, in brief`, html: SUB_PROSE[sub.slug] ? SUB_PROSE[sub.slug](matches.length) : para(FACTS[sub.parent]) },
   });
 }
 
