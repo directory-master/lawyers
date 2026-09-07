@@ -253,6 +253,15 @@ export function buildStore(csvRows, fileCount, label = 'CSV') {
   const ids = new Set();
   for (const s of out) { let id = s.id, n = 2; while (ids.has(id)) id = `${s.id}-${n++}`; s.id = id; ids.add(id); }
 
+  // Self-hosted photos (scripts/fetch-images.mjs → data/photos.json). A listing
+  // whose thumbnail was downloaded points at the local copy; one whose source is
+  // known dead (Google lh3 links expire in weeks) gets null so the card shows the
+  // placeholder instead of firing a request that will 403. Unknown ids keep the
+  // remote URL until the fetcher has seen them.
+  let PHOTOS = {};
+  try { PHOTOS = JSON.parse(readFileSync(new URL('../data/photos.json', import.meta.url), 'utf8')); } catch { /* none yet */ }
+  for (const s of out) { const p = PHOTOS[s.id]; if (p) s.image = p.file ? '/' + p.file : null; }
+
   out.sort((a, b) => a.cityName.localeCompare(b.cityName) || (b.rating ?? -1) - (a.rating ?? -1) || (b.reviews ?? -1) - (a.reviews ?? -1));
 
   writeFileSync(

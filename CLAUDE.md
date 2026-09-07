@@ -53,6 +53,8 @@ every page — only `css/style.css` + `sw.js` change. (We dropped the old
 ```bash
 cd ~/lawyers
 npm run import -- ~/Downloads/Bing_Maps_Scraper_<lawyers>.csv   # refresh data
+node scripts/fetch-images.mjs      # self-host new thumbnails → assets/photos/ + data/photos.json
+node scripts/rebuild-imported.mjs  # re-point `image` at the local files (no CSV needed)
 npm run build      # bump package.json version FIRST, then regenerate static pages (+ sw.js)
 npm run serve      # http://localhost:8000  (static pages live at /marietta/, /county/cobb/, …)
 ```
@@ -112,8 +114,13 @@ tier earns.
 - Free cards show an **"Own this practice? Claim and upgrade"** CTA → in-page sheet
   → `mailto`. Claim/lead email goes to **`artivicolab@gmail.com`** — **never render
   that address as visible text** (mailto target only).
-- **Listing photos** come from the scrape (`l.image`, Bing + Google thumbnail URLs)
-  and fill the card background on **every** listing that has one. Tiny thumbnails are
+- **Listing photos** come from the scrape (`l.image`) but are **self-hosted**:
+  scraped Google (lh3) links 403 within weeks, so [scripts/fetch-images.mjs](scripts/fetch-images.mjs)
+  downloads every reachable thumbnail to `assets/photos/<id>.jpg` (400px JPEG) and
+  records dead sources in `data/photos.json`; the importer sets `image` to the local
+  path, or null when the source is known dead. Run it after every import. Photos
+  fill the card background on **every** listing that has one; listings without
+  one get the branded placeholder plate (gilt initials + temple mark). Tiny thumbnails are
   upscaled (`hiResImage` in [js/lib/format.js](js/lib/format.js)) so they don't blur,
   and an initials panel sits behind every photo so a failed/missing image degrades to
   initials, never a broken-image glyph.

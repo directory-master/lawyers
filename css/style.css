@@ -773,9 +773,19 @@ button:not(:disabled), [role="button"], a[href], label[for], summary,
 
 .lc-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
   object-position: top center; z-index: 0; }
-.lc-bg--initials { display: flex; align-items: flex-start; justify-content: center; padding-top: 22px;
-  font-family: var(--font-serif); font-weight: 700; font-size: 88px; letter-spacing: .04em;
-  color: rgba(255,255,255,.13); }
+/* Placeholder plate when a listing has no usable photo (scraped Google links
+   expire): the brand's temple mark in faint gilt on the ink gradient, with the
+   firm's initials set small in gilt above it. Reads as a deliberate letterhead,
+   not a broken image. */
+:root { --plate-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cg fill='%23a8893c' fill-opacity='0.28' transform='translate(0,-6)'%3E%3Cpath d='M256 150 L372 206 L140 206 Z'/%3E%3Crect x='150' y='212' width='212' height='24' rx='3'/%3E%3Crect x='157' y='244' width='26' height='96' rx='2'/%3E%3Crect x='215' y='244' width='26' height='96' rx='2'/%3E%3Crect x='271' y='244' width='26' height='96' rx='2'/%3E%3Crect x='329' y='244' width='26' height='96' rx='2'/%3E%3Crect x='150' y='346' width='212' height='22' rx='3'/%3E%3Crect x='132' y='372' width='248' height='24' rx='4'/%3E%3C/g%3E%3C/svg%3E"); }
+.lc-bg--initials { display: flex; align-items: flex-start; justify-content: center; padding-top: 18px;
+  font-family: var(--font-serif); font-weight: 700; font-size: 30px; letter-spacing: .12em;
+  color: rgba(194,167,94,.55);
+  background:
+    var(--plate-mark) center 46% / 150px auto no-repeat,
+    radial-gradient(120% 80% at 50% 0%, rgba(168,137,60,.16), transparent 60%),
+    linear-gradient(150deg, #2c2c36, var(--ink));
+  }
 .lc-scrim { position: absolute; inset: 0; z-index: 1; pointer-events: none;
   background: linear-gradient(180deg, rgba(16,16,20,.4) 0%, rgba(16,16,20,0) 30%,
     rgba(16,16,20,.6) 62%, rgba(16,16,20,.95) 100%); }
@@ -986,9 +996,13 @@ button:not(:disabled), [role="button"], a[href], label[for], summary,
   object-fit: contain; background: #0e0e12; }
 .profile-photo--tall { width: auto; max-width: 100%; height: auto; min-height: 0; max-height: 62vh;
   margin: 0 auto; }
-.profile-photo--ini { width: 100%; height: 210px; display: flex; align-items: center; justify-content: center;
-  font-family: var(--font-serif); font-weight: 700; font-size: 76px; color: rgba(255,255,255,.18);
-  background: linear-gradient(150deg, #2c2c36, var(--ink)); }
+.profile-photo--ini { width: 100%; height: 210px; display: flex; align-items: flex-start; justify-content: center;
+  padding-top: 22px; font-family: var(--font-serif); font-weight: 700; font-size: 34px; letter-spacing: .12em;
+  color: rgba(194,167,94,.55);
+  background:
+    var(--plate-mark) center 58% / 170px auto no-repeat,
+    radial-gradient(120% 80% at 50% 0%, rgba(168,137,60,.16), transparent 60%),
+    linear-gradient(150deg, #2c2c36, var(--ink)); }
 .profile-body { padding: 16px 18px 20px; }
 .profile-eyebrow { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
   color: var(--ox); }

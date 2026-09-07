@@ -1,8 +1,9 @@
 // format.js — display helpers (no DOM).
 
 export const initials = (name) => (name || '?')
-  .replace(/\b(the|law|office|offices|of|firm|group|llc|llp|pc|p\.c\.|associates|and|&|at|attorney|attorneys)\b/gi, ' ')
-  .trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || (name || '?')[0].toUpperCase();
+  .replace(/[^A-Za-z\s]/g, ' ')                       // drop &, commas, periods, digits
+  .replace(/\b(the|law|office|offices|of|firm|group|llc|llp|pc|pa|inc|associates|and|at|attorney|attorneys|esq|jr|sr|ii|iii)\b/gi, ' ')
+  .trim().split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || (name || '?').replace(/[^A-Za-z]/g, '')[0]?.toUpperCase() || '?';
 
 export const telHref = (phone) => phone ? 'tel:' + phone.replace(/[^\d+]/g, '') : null;
 

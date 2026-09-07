@@ -88,8 +88,9 @@ const clamp = (s, max = 158) => {
 };
 
 const initials = (name) => (name || '?')
-  .replace(/\b(the|law|office|offices|of|firm|group|llc|llp|pc|p\.c\.|associates|and|&|at|attorney|attorneys)\b/gi, ' ')
-  .trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || (name || '?')[0].toUpperCase();
+  .replace(/[^A-Za-z\s]/g, ' ')                       // drop &, commas, periods, digits
+  .replace(/\b(the|law|office|offices|of|firm|group|llc|llp|pc|pa|inc|associates|and|at|attorney|attorneys|esq|jr|sr|ii|iii)\b/gi, ' ')
+  .trim().split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || (name || '?').replace(/[^A-Za-z]/g, '')[0]?.toUpperCase() || '?';
 const stars = (r) => { if (!r) return ''; const f = Math.floor(r), up = r - f >= .75 ? 1 : 0, h = r - f >= .25 && r - f < .75; return '★'.repeat(f + up) + (h ? '⯪' : ''); };
 const telHref = (p) => p ? 'tel:' + p.replace(/[^\d+]/g, '') : null;
 const mapsHref = (l) => l.lat != null ? `https://www.google.com/maps/search/?api=1&query=${l.lat},${l.lng}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(l.address || l.name)}`;

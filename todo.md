@@ -131,8 +131,7 @@ land.
   MB, `/area/personal-injury/` = 5.5 MB. Target < 150 KB.
 - ✅ (v0.36.0) Drop `FAQPage` JSON-LD (no rich result for commercial sites since Aug 2023).
   Keep BreadcrumbList, CollectionPage, ItemList. Keep the FAQ as visible HTML.
-- ⬜ Self-host / proxy listing thumbnails (third-party LCP; ties to
-  `fetch-images.mjs`).
+- ✅ (v0.36.1) Self-host / proxy listing thumbnails (see Ship-required).
 - ⬜ Lighthouse before/after on `/brunswick/`, `/marietta/`,
   `/area/personal-injury/`; log LCP/CLS/INP.
 - ⬜ Re-check indexed count 2–4 weeks after.
@@ -226,9 +225,22 @@ land.
 - ⬜ `ga-cities.js` tiered SEO target list (port from contractors).
 
 ### Ship-required
-- ⬜ **Self-host listing images** (`scripts/fetch-images.mjs`: download Google /
-  Bing thumbnails into `/assets/`, rewrite `image`). Hotlinks rot and are
-  third-party LCP. Run after scraping settles.
+- ✅ (v0.36.1, 2026-09-06) **Self-host listing images.** `scripts/fetch-images.mjs`
+  downloads every reachable thumbnail to `assets/photos/<id>.jpg` (400px,
+  progressive JPEG q62, ~14 KB each) and records the outcome in
+  `data/photos.json`; the importer swaps `image` to the local file, or to null
+  when the source is known dead. `scripts/rebuild-imported.mjs` regenerates
+  `lawyers-imported.js` from the store without a CSV. **Finding:** all 1,875
+  Google Maps (lh3) photo URLs were already 403 by Sep 6, ten weeks after the
+  scrape; Bing and Street View still served. Workflow after any import:
+  `node scripts/fetch-images.mjs && node scripts/rebuild-imported.mjs && npm run build`.
+- ⬜ **Recover the 1,875 dead Google photos**: re-scrape those cities with the
+  Google tool (`Maps-Scraper-net_*.csv`) and run the fetcher the same day, before
+  the new lh3 links expire.
+- ✅ (v0.36.1) **Branded placeholder plate** for listings with no usable photo:
+  gilt initials over the faint temple mark on the ink gradient (`.lc-bg--initials`,
+  `.profile-photo--ini`). Initials now skip punctuation and filler words
+  ("Jones & Swanson" → JS, not "J&").
 - ⬜ Real device + Lighthouse pass (also listed under SEO Priority 4).
 - ⬜ Payment flow (currently `mailto`).
 - ⬜ Default 1200×630 OG image (currently the portrait hero photo, 591×887).
