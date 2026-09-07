@@ -17,7 +17,7 @@
   --blue: var(--ox);  --blue-press: var(--ox-press);  --indigo: var(--ox-press);
   --orange: var(--gilt);                       /* stars, rank, attorney tag → gilt */
   --green: #2e6b4f;  --red: #b23a3a;  --yellow: #c8a04f;  --pink: #9a3b5c;
-  --label: #1a1a1f;  --label-2: #6e6e76;  --label-3: #9a9aa0;
+  --label: #1a1a1f;  --label-2: #6e6e76;  --label-3: #74747c;  /* was #9a9aa0; darkened for 4.5:1 contrast on counts */
   --bg: #fcfbf9;  --bg-elevated: #ffffff;  --bg-tint: #f4f1ea;
   --separator: rgba(26,26,31,.1);
   --fill: rgba(26,26,31,.05);  --fill-2: rgba(26,26,31,.09);

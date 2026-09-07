@@ -37834,5 +37834,23 @@
   "file": "assets/photos/straughan-and-straughan-mcrae-helena.jpg",
   "status": 200,
   "at": "2026-09-07"
+ },
+ "rouse-and-co-llc-attorney-at-law-snellville": {
+  "src": "https://lh3.googleusercontent.com/gps-cs-s/APNQkAEsMbdT_sAW2Whjyyh7iml-URGCwpFFE2Z4QNZBVrNji4EfYBC2Y3_YJcU5lscyjhynhjYAquwyao627Vm4ZUjPrKv23UmXxYJbQr_6YJb3Ac4lZ5uRbczLPeI60TTQBWQmGQGm=w80-h120-k-no",
+  "file": null,
+  "status": 403,
+  "at": "2026-09-07"
+ },
+ "carter-roosevelt-ii-attorney-albany": {
+  "src": "https://streetviewpixels-pa.googleapis.com/v1/thumbnail?panoid=VvnOBENopgIMtrNvyhxqyw&cb_client=search.gws-prod.gps&w=80&h=92&yaw=82.91416&pitch=0&thumbfov=100",
+  "file": "assets/photos/carter-roosevelt-ii-attorney-albany.jpg",
+  "status": 200,
+  "at": "2026-09-07"
+ },
+ "collier-and-gamble-llp-dawson": {
+  "src": "https://streetviewpixels-pa.googleapis.com/v1/thumbnail?panoid=ryvwezzXMRpNgFlVmeZI-w&cb_client=search.gws-prod.gps&w=80&h=92&yaw=273.38657&pitch=0&thumbfov=100",
+  "file": "assets/photos/collier-and-gamble-llp-dawson.jpg",
+  "status": 200,
+  "at": "2026-09-07"
  }
 }

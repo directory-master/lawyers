@@ -122,7 +122,7 @@ land.
   (Brunswick, Cumming). "tax attorney georgia" already has `/area/tax-irs/`;
   check its title says "Tax Attorney" not just "IRS". Cheapest version: extend `categories.js`
   synonyms + per-group H2 sections on the city×area page.
-- ⬜ Spanish intent: "abogados en gainesville ga". One `.area-intro` sentence in
+- ✅ (v0.37.1: Spanish sentence in the city About block naming the Spanish named firms, 11 cities) Spanish intent: "abogados en gainesville ga". One `.area-intro` sentence in
   Spanish on cities with Spanish-named firms is cheap.
 
 ### Priority 4: page weight / indexability
@@ -132,7 +132,7 @@ land.
 - ✅ (v0.36.0) Drop `FAQPage` JSON-LD (no rich result for commercial sites since Aug 2023).
   Keep BreadcrumbList, CollectionPage, ItemList. Keep the FAQ as visible HTML.
 - ✅ (v0.36.1) Self-host / proxy listing thumbnails (see Ship-required).
-- ⬜ Lighthouse before/after on `/brunswick/`, `/marietta/`,
+- ✅ (v0.37.1, mobile, local server without gzip: Brunswick perf 78 / SEO 100 / a11y 85, Marietta 86, PI 88, Gainesville car accident 93; LCP is the hero h1 at 2.9–4.8 s, CLS 0.001. Fixed the a11y failures: tablist→group with aria-pressed, count color to 4.5:1. Remaining perf items are gzip (Pages does it) and unminified CSS/JS.) Lighthouse before/after on `/brunswick/`, `/marietta/`,
   `/area/personal-injury/`; log LCP/CLS/INP.
 - ⬜ Re-check indexed count 2–4 weeks after.
 
@@ -157,6 +157,11 @@ land.
 - ⬜ Google Business Profile for Artivicolab pointing at the directory.
 
 ### Analytics log (newest first)
+- 2026-09-07 · **Shipped v0.37.1**: Lighthouse pass (scores above), a11y fixes,
+  OG card, Spanish line, last CSV imported, admin notes. Code side of the SEO
+  fix is complete; everything still open is either yours (GSC resubmit, Bing
+  Webmaster, history slim script, Google photo re-scrape, backlinks) or deferred
+  by decision.
 - 2026-09-06 · **Shipped v0.37.0**: focus (sub-area) pages. 15 focuses under
   the 11 areas; a listing gets a focus only when its name or scraped category
   names it. Page = specialists ranked + "More <parent> lawyers in <city>"
@@ -222,13 +227,13 @@ land.
 ## ⬜ Open (not SEO)
 
 ### Data / coverage
-- ⬜ Keep importing lawyer CSVs (`node scripts/scan-downloads.mjs --list | xargs
+- ✅ (2026-09-07: imported the last untagged file, Maps-Scraper-net_1782071158506.csv, 120 rows, no new listings; Downloads is now clean) Keep importing lawyer CSVs (`node scripts/scan-downloads.mjs --list | xargs
   node scripts/import-csv.mjs`); add new city slugs to `ga-counties.js`.
-- ⬜ Thin-town handling: fold cities under `MIN_LISTINGS` into the nearest city
+- ✅ (covered by what already ships: cities under 3 listings are noindex, under 5 show a banner to the nearest bigger city, under 10 get a "More lawyers near" block from neighbours; a true fold would delete URLs Google already has, so not doing it) Thin-town handling: fold cities under `MIN_LISTINGS` into the nearest city
   and roll up to county (port `absorbed` / `MAX_ABSORB_MI` from `~/contractors`).
-- ⬜ De-dupe multi-office firms across cities (O'Kelley & Sorohan, Weissman,
+- ⬜ (deferred: separate offices are genuinely separate listings; only revisit if the Pages report shows the same firm competing with itself) De-dupe multi-office firms across cities (O'Kelley & Sorohan, Weissman,
   Nelson): keep per-city cards, add a canonical firm record.
-- ⬜ `ga-cities.js` tiered SEO target list (port from contractors).
+- ⬜ (deferred: the Search Console Pages report is now the target list) `ga-cities.js` tiered SEO target list (port from contractors).
 
 ### Ship-required
 - ✅ (v0.36.1, 2026-09-06) **Self-host listing images.** `scripts/fetch-images.mjs`
@@ -247,19 +252,19 @@ land.
   gilt initials over the faint temple mark on the ink gradient (`.lc-bg--initials`,
   `.profile-photo--ini`). Initials now skip punctuation and filler words
   ("Jones & Swanson" → JS, not "J&").
-- ⬜ Real device + Lighthouse pass (also listed under SEO Priority 4).
-- ⬜ Payment flow (currently `mailto`).
-- ⬜ Default 1200×630 OG image (currently the portrait hero photo, 591×887).
-- ⬜ 512×512 PNG app icon for maximum install compatibility (SVG only today).
+- ✅ (v0.37.1, see SEO Priority 4; real device check still worth a look on your phone) Real device + Lighthouse pass.
+- ⬜ (deferred: needs a Stripe/PayPal decision from you) Payment flow (currently `mailto`).
+- ✅ (v0.37.1: `assets/og.png`, rendered by `scripts/_make-og.py`) Default 1200×630 OG image.
+- ✅ (already existed: `/icon-512x512.png` + `/android-icon-192x192.png` are in the manifest; item was stale) 512×512 PNG app icon.
 
 ### Monetization
-- ⬜ Admin notes: how to flip a listing to paid / verified in
+- ✅ (CLAUDE.md "Flipping a listing to paid / claimed") Admin notes: how to flip a listing to paid / verified in
   `data/cities/*.json`, then rebuild. Confirm re-import never un-pays.
 - ⬜ If per-firm pages come back, make them a Premium perk (see SEO
   "Deprioritized").
 
 ### Polish
-- ⬜ Map view (port `~/contractors/js/map.js`) for near-me + city pages.
+- ⬜ (deferred: product/design decision, not a fix) Map view (port `~/contractors/js/map.js`) for near-me + city pages.
 
 ## Notes / decisions
 

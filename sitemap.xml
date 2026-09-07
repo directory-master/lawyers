@@ -926,6 +926,7 @@
   <url><loc>https://lawyers.artivicolab.com/county/jenkins/</loc><lastmod>2026-09-07</lastmod><priority>0.7</priority></url>
   <url><loc>https://lawyers.artivicolab.com/county/macon/</loc><lastmod>2026-09-07</lastmod><priority>0.7</priority></url>
   <url><loc>https://lawyers.artivicolab.com/county/marion/</loc><lastmod>2026-09-07</lastmod><priority>0.7</priority></url>
+  <url><loc>https://lawyers.artivicolab.com/county/terrell/</loc><lastmod>2026-09-07</lastmod><priority>0.7</priority></url>
   <url><loc>https://lawyers.artivicolab.com/county/banks/</loc><lastmod>2026-09-07</lastmod><priority>0.7</priority></url>
   <url><loc>https://lawyers.artivicolab.com/county/charlton/</loc><lastmod>2026-09-07</lastmod><priority>0.7</priority></url>
   <url><loc>https://lawyers.artivicolab.com/county/early/</loc><lastmod>2026-09-07</lastmod><priority>0.7</priority></url>
@@ -936,7 +937,6 @@
   <url><loc>https://lawyers.artivicolab.com/county/long/</loc><lastmod>2026-09-07</lastmod><priority>0.7</priority></url>
   <url><loc>https://lawyers.artivicolab.com/county/montgomery/</loc><lastmod>2026-09-07</lastmod><priority>0.7</priority></url>
   <url><loc>https://lawyers.artivicolab.com/county/taylor/</loc><lastmod>2026-09-07</lastmod><priority>0.7</priority></url>
-  <url><loc>https://lawyers.artivicolab.com/county/terrell/</loc><lastmod>2026-09-07</lastmod><priority>0.7</priority></url>
   <url><loc>https://lawyers.artivicolab.com/county/treutlen/</loc><lastmod>2026-09-07</lastmod><priority>0.7</priority></url>
   <url><loc>https://lawyers.artivicolab.com/county/wheeler/</loc><lastmod>2026-09-07</lastmod><priority>0.7</priority></url>
   <url><loc>https://lawyers.artivicolab.com/county/wilkinson/</loc><lastmod>2026-09-07</lastmod><priority>0.7</priority></url>
@@ -980,8 +980,8 @@
   <url><loc>https://lawyers.artivicolab.com/zip/30677/</loc><lastmod>2026-09-07</lastmod><priority>0.4</priority></url>
   <url><loc>https://lawyers.artivicolab.com/zip/31707/</loc><lastmod>2026-09-07</lastmod><priority>0.4</priority></url>
   <url><loc>https://lawyers.artivicolab.com/zip/30342/</loc><lastmod>2026-09-07</lastmod><priority>0.4</priority></url>
-  <url><loc>https://lawyers.artivicolab.com/zip/30253/</loc><lastmod>2026-09-07</lastmod><priority>0.4</priority></url>
   <url><loc>https://lawyers.artivicolab.com/zip/30907/</loc><lastmod>2026-09-07</lastmod><priority>0.4</priority></url>
+  <url><loc>https://lawyers.artivicolab.com/zip/30253/</loc><lastmod>2026-09-07</lastmod><priority>0.4</priority></url>
   <url><loc>https://lawyers.artivicolab.com/zip/31210/</loc><lastmod>2026-09-07</lastmod><priority>0.4</priority></url>
   <url><loc>https://lawyers.artivicolab.com/zip/30144/</loc><lastmod>2026-09-07</lastmod><priority>0.4</priority></url>
   <url><loc>https://lawyers.artivicolab.com/zip/30236/</loc><lastmod>2026-09-07</lastmod><priority>0.4</priority></url>
@@ -1265,9 +1265,9 @@
   <url><loc>https://lawyers.artivicolab.com/attorneys/employment/</loc><lastmod>2026-09-07</lastmod><priority>0.6</priority></url>
   <url><loc>https://lawyers.artivicolab.com/attorneys/tax-irs/</loc><lastmod>2026-09-07</lastmod><priority>0.6</priority></url>
   <url><loc>https://lawyers.artivicolab.com/directory/</loc><lastmod>2026-09-07</lastmod><priority>0.9</priority></url>
-  <url><loc>https://lawyers.artivicolab.com/areas/</loc><lastmod>2026-06-21</lastmod><priority>0.9</priority></url>
-  <url><loc>https://lawyers.artivicolab.com/rankings/</loc><lastmod>2026-06-21</lastmod><priority>0.4</priority></url>
-  <url><loc>https://lawyers.artivicolab.com/pricing/</loc><lastmod>2026-06-21</lastmod><priority>0.4</priority></url>
-  <url><loc>https://lawyers.artivicolab.com/privacy/</loc><lastmod>2026-06-21</lastmod><priority>0.4</priority></url>
-  <url><loc>https://lawyers.artivicolab.com/terms/</loc><lastmod>2026-06-21</lastmod><priority>0.4</priority></url>
+  <url><loc>https://lawyers.artivicolab.com/areas/</loc><lastmod>2026-09-07</lastmod><priority>0.9</priority></url>
+  <url><loc>https://lawyers.artivicolab.com/rankings/</loc><lastmod>2026-09-07</lastmod><priority>0.4</priority></url>
+  <url><loc>https://lawyers.artivicolab.com/pricing/</loc><lastmod>2026-09-07</lastmod><priority>0.4</priority></url>
+  <url><loc>https://lawyers.artivicolab.com/privacy/</loc><lastmod>2026-09-07</lastmod><priority>0.4</priority></url>
+  <url><loc>https://lawyers.artivicolab.com/terms/</loc><lastmod>2026-09-07</lastmod><priority>0.4</priority></url>
 </urlset>

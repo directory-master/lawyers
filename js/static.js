@@ -238,7 +238,7 @@ const FILTER_KEY = 'gal.filter';
       emptyEl.textContent = `No ${filter === 'firm' ? 'law firms' : 'attorneys'} listed on this page.`;
       emptyEl.style.display = '';
     } else if (emptyEl) emptyEl.style.display = 'none';
-    segments.forEach(s => { const on = s.dataset.filter === filter; s.classList.toggle('is-active', on); s.setAttribute('aria-selected', String(on)); });
+    segments.forEach(s => { const on = s.dataset.filter === filter; s.classList.toggle('is-active', on); s.setAttribute('aria-pressed', String(on)); });
     teaseNames(list);                                      // newly revealed names get the slide hint
   };
 

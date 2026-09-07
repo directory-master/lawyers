@@ -125,6 +125,18 @@ tier earns.
   and an initials panel sits behind every photo so a failed/missing image degrades to
   initials, never a broken-image glyph.
 
+## Flipping a listing to paid / claimed (manual admin)
+
+Monetization fields live on the raw row in `data/cities/<city>.json` and survive
+re-imports: `tier` (`free|standard|premium`), `paid` (bool), `paidAt` (ISO date),
+`paidDays` (default 30), `verified` (bool, the "Claimed" badge), `barNo`. To
+upgrade a firm: find its row by `Name` in the city file, set
+`"tier": "premium", "paid": true, "paidAt": "2026-09-07", "paidDays": 30`
+(and `"verified": true` once the owner has claimed it), then
+`node scripts/rebuild-imported.mjs && npm run build` (bump the version first).
+`rankScore` pins paid tiers above free; nothing else changes. To expire, set
+`paid: false` and rebuild. Never edit `lawyers-imported.js` directly.
+
 ## Adding listings
 
 **Don't hand-edit `lawyers-imported.js`.** Run `npm run import -- <csv>`. A single
